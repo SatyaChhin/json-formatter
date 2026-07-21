@@ -15,6 +15,8 @@ export const en = {
   'toolbar.download': 'Download',
   'toolbar.clear': 'Clear',
   'toolbar.treeView': 'Tree view',
+  'toolbar.clearall': 'Clear all',
+
 
   'editor.label': 'Editor',
   'editor.loading': 'Loading editor…',

@@ -144,7 +144,7 @@ function pickSample(sample: SampleDataset) {
       @click="emit('clear')"
     >
       <Trash2 class="h-4 w-4" aria-hidden="true" />
-      {{ t('toolbar.clear') }}
+      {{ t('toolbar.clearall') }}
     </button>
 
     <div class="grow" />

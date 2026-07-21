@@ -16,6 +16,7 @@ export const km = {
   'toolbar.download': 'ទាញយក',
   'toolbar.clear': 'សម្អាត',
   'toolbar.treeView': 'ទិដ្ឋភាពមែកធាង',
+  'toolbar.clearall': 'Clear all',
 
   'editor.label': 'កម្មវិធីនិពន្ធ',
   'editor.loading': 'កំពុងផ្ទុកកម្មវិធីនិពន្ធ…',

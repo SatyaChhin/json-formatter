@@ -1,6 +1,25 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
-import { CheckCircle2, XCircle, Sun, Moon, FolderTree, ArrowUpDown, Copy, Download, Trash2, Check } from 'lucide-vue-next'
+import jmespath from 'jmespath'
+import { 
+  CheckCircle2, 
+  XCircle, 
+  Sun, 
+  Moon, 
+  FolderTree, 
+  ArrowUpDown, 
+  Copy, 
+  Download, 
+  Trash2, 
+  Check, 
+  Code2, 
+  FileText, 
+  Table, 
+  Search, 
+  X,
+  Code,
+  Upload
+} from 'lucide-vue-next'
 import { useJsonFormatter } from '~/composables/useJsonFormatter'
 import { useClipboard } from '~/composables/useClipboard'
 import { useLocale } from '~/composables/useLocale'
@@ -10,17 +29,50 @@ import { localeOptions } from '~/types/i18n'
 import type { IndentSize, SampleDataset } from '~/types/json'
 import type { Locale } from '~/types/i18n'
 
+// View mode type definition
+type ViewMode = 'tree' | 'text' | 'table' | 'code'
+
 const { state, options, validate, format, minify, setIndentSize, toggleSortKeys, clear, loadSample, canDownload } =
   useJsonFormatter()
 const { toasts, copyToClipboard, downloadJson } = useClipboard()
 const { locale, t, setLocale, initLocale } = useLocale()
 const { theme, toggleTheme, initTheme } = useTheme()
 
-// Editor state text content
+// Editor state content, view mode & search query
 const content = ref('')
 const showTree = ref(true) 
+const viewMode = ref<ViewMode>('tree') // Modes: 'tree', 'text', 'table', 'code'
+const searchQuery = ref('')            // Search/Find field state
+const jmesQuery = ref('')              // JMESPath Query State
+const jmesError = ref<string | null>(null)
 const isTreeCleared = ref(false)
 const treeCopied = ref(false)
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// Handle file upload for JSON formatting
+function triggerFileUpload() {
+  fileInputRef.value?.click()
+}
+
+function handleFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    const text = e.target?.result as string
+    if (text) {
+      content.value = text
+      if (format(text)) {
+        content.value = state.value.formatted
+      }
+    }
+    // Reset file input value so the same file can be uploaded again if needed
+    if (target) target.value = ''
+  }
+  reader.readAsText(file)
+}
 
 // Live validation on every keystroke
 const liveValidation = computed(() => validate(content.value))
@@ -31,6 +83,126 @@ const parsedForTree = computed<unknown>(() => {
   return liveValidation.value.data
 })
 
+/**
+ * Deep recursive filter that prunes non-matching properties while retaining
+ * parent-child structural validity for Tree, Text, and Code views.
+ */
+function filterJsonDeep(data: unknown, query: string): unknown {
+  if (!query) return data
+  const q = query.toLowerCase()
+
+  if (data === null || data === undefined) return undefined
+
+  // Match primitive leaf values
+  if (typeof data !== 'object') {
+    return String(data).toLowerCase().includes(q) ? data : undefined
+  }
+
+  // Handle Arrays
+  if (Array.isArray(data)) {
+    const filteredArr = data
+      .map(item => filterJsonDeep(item, query))
+      .filter(item => item !== undefined)
+    return filteredArr.length > 0 ? filteredArr : undefined
+  }
+
+  // Handle Objects
+  const resultObj: Record<string, unknown> = {}
+  let matches = false
+
+  for (const [key, val] of Object.entries(data)) {
+    const keyMatches = key.toLowerCase().includes(q)
+    const filteredVal = filterJsonDeep(val, query)
+
+    // Keep field if the property key matches OR its nested value matches
+    if (keyMatches || filteredVal !== undefined) {
+      resultObj[key] = keyMatches ? val : filteredVal
+      matches = true
+    }
+  }
+
+  return matches ? resultObj : undefined
+}
+
+// Transform data using JMESPath or deep search
+const filteredParsedData = computed(() => {
+  if (!parsedForTree.value) return undefined
+  jmesError.value = null
+
+  // 1. Prioritize JMESPath Query execution if supplied
+  if (jmesQuery.value.trim()) {
+    try {
+      const result = jmespath.search(parsedForTree.value, jmesQuery.value.trim())
+      return result !== null ? result : undefined
+    } catch (err: any) {
+      jmesError.value = err?.message || 'Invalid JMESPath query'
+      return undefined
+    }
+  }
+
+  // 2. Fall back to standard search query if present
+  if (!searchQuery.value.trim()) return parsedForTree.value
+  return filterJsonDeep(parsedForTree.value, searchQuery.value.trim())
+})
+
+// Helper to normalize JSON data for Table View
+const tableData = computed<Array<Record<string, unknown>>>(() => {
+  const data = filteredParsedData.value !== undefined ? filteredParsedData.value : parsedForTree.value
+  if (!data) return []
+  
+  if (Array.isArray(data)) {
+    return data.map((item, idx) => {
+      if (typeof item === 'object' && item !== null) return { _index: idx, ...item }
+      return { _index: idx, value: item }
+    })
+  }
+  
+  if (typeof data === 'object' && data !== null) {
+    return Object.entries(data).map(([key, value]) => ({
+      key,
+      value
+    }))
+  }
+  
+  return []
+})
+
+// Filtered Table Data based on Search Query
+const filteredTableData = computed(() => {
+  if (!searchQuery.value.trim()) return tableData.value
+  
+  const query = searchQuery.value.toLowerCase().trim()
+  return tableData.value.filter(row => {
+    return Object.entries(row).some(([key, val]) => {
+      const formattedVal = formatTableCellValue(val).toLowerCase()
+      return key.toLowerCase().includes(query) || formattedVal.includes(query)
+    })
+  })
+})
+
+// Get table headers dynamically
+const tableHeaders = computed<string[]>(() => {
+  if (!tableData.value.length) return []
+  const keysSet = new Set<string>()
+  tableData.value.forEach(row => {
+    Object.keys(row).forEach(k => keysSet.add(k))
+  })
+  return Array.from(keysSet)
+})
+
+/** Formats values cleanly inside table cells without truncation */
+function formatTableCellValue(val: unknown): string {
+  if (val === null || val === undefined) return '-'
+  if (typeof val === 'object') {
+    try {
+      return JSON.stringify(val, null, 2)
+    } catch {
+      return String(val)
+    }
+  }
+  return String(val)
+}
+
 // Keep raw state in sync & reset tree clear when content changes
 watch(content, (next) => {
   state.value.raw = next
@@ -39,17 +211,27 @@ watch(content, (next) => {
   }
 })
 
-/** Helper: Gets formatted JSON string dynamically */
-function getFormattedText(): string {
-  if (!content.value.trim()) return ''
-  // Try running format to ensure state.formatted is up to date
-  if (liveValidation.value.valid && format(content.value)) {
-    return state.value.formatted
+/** Helper: Gets formatted JSON string dynamically for any node input */
+function getFormattedText(dataToFormat?: unknown): string {
+  const target = dataToFormat !== undefined ? dataToFormat : parsedForTree.value
+  if (!target) return content.value
+
+  const indent = typeof options.value.indentSize === 'number' ? options.value.indentSize : 2
+  try {
+    return JSON.stringify(target, null, indent)
+  } catch {
+    return content.value
   }
-  return content.value
 }
 
-/** 1. Format Code in Editor & Tree */
+// Filtered Formatted String for Text & Code view modes
+const filteredFormattedText = computed(() => {
+  if (!searchQuery.value.trim() && !jmesQuery.value.trim()) return getFormattedText()
+  if (filteredParsedData.value === undefined) return ''
+  return getFormattedText(filteredParsedData.value)
+})
+
+/** 1. Format Code in Editor & View */
 function runFormat() {
   if (format(content.value)) {
     content.value = state.value.formatted
@@ -71,7 +253,7 @@ function handleIndentChange(size: IndentSize) {
   }
 }
 
-/** 4. Sort Fields in Editor & Tree view */
+/** 4. Sort Fields */
 function handleSortToggle() {
   toggleSortKeys()
   if (state.value.isValid && content.value.trim() !== '') {
@@ -79,7 +261,7 @@ function handleSortToggle() {
   }
 }
 
-/** 5. Clear Data in Editor & Tree */
+/** 5. Clear Data */
 function handleClear() {
   content.value = ''
   clear()
@@ -91,9 +273,9 @@ function handleLoadSample(sample: SampleDataset) {
   content.value = state.value.formatted || sample.json
 }
 
-/** 6. Copy Code (Ensures Formatted Data) */
+/** 6. Copy Code */
 function handleCopy(payload?: string) {
-  const textToCopy = (typeof payload === 'string' && payload) ? payload : getFormattedText()
+  const textToCopy = (typeof payload === 'string' && payload) ? payload : filteredFormattedText.value
   if (!textToCopy) return
   
   copyToClipboard(textToCopy)
@@ -103,9 +285,9 @@ function handleCopy(payload?: string) {
   }, 1500)
 }
 
-/** 7. Download JSON Data (Ensures Formatted Data) */
+/** 7. Download JSON Data */
 function handleDownload(payload?: string) {
-  const textToDownload = (typeof payload === 'string' && payload) ? payload : getFormattedText()
+  const textToDownload = (typeof payload === 'string' && payload) ? payload : filteredFormattedText.value
   if (!textToDownload) return
 
   downloadJson(textToDownload, 'data.json')
@@ -113,6 +295,8 @@ function handleDownload(payload?: string) {
 
 function handleClearTreeOnly() {
   isTreeCleared.value = true
+  searchQuery.value = ''
+  jmesQuery.value = ''
 }
 
 function handleLocaleSelect(next: Locale) {
@@ -210,13 +394,33 @@ onMounted(() => {
 
     <!-- Main workspace -->
     <main class="flex min-h-0 flex-1 gap-3 p-4">
-      <!-- Editor Section -->
+      <!-- Left Panel: Code Editor Section -->
       <section
         class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
         :class="showTree ? 'basis-1/2' : 'basis-full'"
       >
         <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
           <span class="text-[11px] uppercase tracking-wide text-muted">{{ t('editor.label') }}</span>
+          
+          <!-- Hidden File Input & Upload Trigger Button -->
+          <div>
+            <input 
+              ref="fileInputRef" 
+              type="file" 
+              accept=".json,.txt" 
+              class="hidden" 
+              @change="handleFileChange" 
+            />
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded border border-surface-hair bg-surface-raised px-2 py-0.5 text-[11px] text-parchment transition hover:border-key/50 hover:text-key"
+              title="Upload JSON File"
+              @click="triggerFileUpload"
+            >
+              <Upload class="h-3 w-3 text-key" />
+              <span>Upload File</span>
+            </button>
+          </div>
         </div>
         <div class="min-h-0 flex-1">
           <ClientOnly>
@@ -230,75 +434,224 @@ onMounted(() => {
         </div>
       </section>
 
-      <!-- Tree View Section -->
+      <!-- Right Panel: View Mode Selector (Tree / Text / Table / Code) -->
       <section
         v-if="showTree"
         class="flex min-h-0 basis-1/2 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
       >
-        <!-- Header with Toolbar Controls -->
-        <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
-          <div class="flex items-center gap-1.5">
-            <FolderTree class="h-3.5 w-3.5 text-key" />
-            <span class="text-[11px] font-medium uppercase tracking-wide text-muted">{{ t('tree.label') }}</span>
+        <!-- Header with 4 Mode Selector, Search Inputs & Toolbar Actions -->
+        <div class="flex flex-col border-b border-surface-hair">
+          <div class="flex items-center justify-between gap-2 px-3 py-1.5">
+            
+            <!-- Mode Switching Controls -->
+            <div class="flex items-center gap-1 shrink-0 rounded bg-surface-raised p-0.5 text-xs">
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
+                :class="viewMode === 'tree' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
+                @click="viewMode = 'tree'"
+              >
+                <FolderTree class="h-3 w-3" />
+                Tree
+              </button>
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
+                :class="viewMode === 'text' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
+                @click="viewMode = 'text'"
+              >
+                <FileText class="h-3 w-3" />
+                Text
+              </button>
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
+                :class="viewMode === 'table' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
+                @click="viewMode = 'table'"
+              >
+                <Table class="h-3 w-3" />
+                Table
+              </button>
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
+                :class="viewMode === 'code' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
+                @click="viewMode = 'code'"
+              >
+                <Code2 class="h-3 w-3" />
+                Code
+              </button>
+            </div>
+
+            <!-- Find / Quick Search Input Box -->
+            <div class="relative flex items-center flex-1 max-w-[160px]">
+              <Search class="absolute left-2 h-3.5 w-3.5 text-muted pointer-events-none" />
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Find field..."
+                class="w-full rounded border border-surface-hair bg-surface-raised pl-7 pr-6 py-0.5 text-xs text-parchment placeholder-muted/60 focus:border-key/50 focus:outline-none"
+              />
+              <button
+                v-if="searchQuery"
+                type="button"
+                class="absolute right-1.5 text-muted hover:text-parchment"
+                @click="searchQuery = ''"
+              >
+                <X class="h-3 w-3" />
+              </button>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="flex items-center gap-1 shrink-0">
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
+                title="Sort Keys"
+                @click="handleSortToggle"
+              >
+                <ArrowUpDown class="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
+                title="Copy Formatted JSON"
+                @click="handleCopy()"
+              >
+                <Check v-if="treeCopied" class="h-3.5 w-3.5 text-key" />
+                <Copy v-else class="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
+                title="Download Formatted JSON"
+                @click="handleDownload()"
+              >
+                <Download class="h-3.5 w-3.5" />
+              </button>
+
+              <button
+                type="button"
+                class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-boolean/50 hover:text-boolean"
+                title="Clear Panel"
+                @click="handleClearTreeOnly"
+              >
+                <Trash2 class="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
 
-          <div class="flex items-center gap-1">
-            <button
-              type="button"
-              class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
-              title="Sort Keys"
-              @click="handleSortToggle"
-            >
-              <ArrowUpDown class="h-3.5 w-3.5" />
-            </button>
-
-            <button
-              type="button"
-              class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
-              title="Copy Formatted JSON"
-              @click="handleCopy()"
-            >
-              <Check v-if="treeCopied" class="h-3.5 w-3.5 text-key" />
-              <Copy v-else class="h-3.5 w-3.5" />
-            </button>
-
-            <button
-              type="button"
-              class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
-              title="Download Formatted JSON"
-              @click="handleDownload()"
-            >
-              <Download class="h-3.5 w-3.5" />
-            </button>
-
-            <button
-              type="button"
-              class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-boolean/50 hover:text-boolean"
-              title="Clear Tree Only"
-              @click="handleClearTreeOnly"
-            >
-              <Trash2 class="h-3.5 w-3.5" />
-            </button>
+          <!-- JMESPath Query Bar -->
+          <div class="flex items-center gap-2 border-t border-surface-hair/60 bg-surface-raised/40 px-3 py-1">
+            <Code class="h-3.5 w-3.5 text-key shrink-0" />
+            <span class="text-[11px] font-mono font-medium text-key">JMESPath:</span>
+            
+            <div class="relative flex-1">
+              <input
+                v-model="jmesQuery"
+                type="text"
+                placeholder="e.g. medical_histories[*].value[] or code"
+                class="w-full rounded border border-surface-hair bg-surface pl-2 pr-6 py-0.5 font-mono text-xs text-parchment placeholder-muted/40 focus:border-key/50 focus:outline-none"
+              />
+              <button
+                v-if="jmesQuery"
+                type="button"
+                class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-parchment"
+                @click="jmesQuery = ''"
+              >
+                <X class="h-3 w-3" />
+              </button>
+            </div>
           </div>
         </div>
 
+        <!-- JMESPath Error Box -->
+        <div v-if="jmesError" class="bg-boolean/10 border-b border-boolean/30 px-3 py-1.5 text-xs text-boolean font-mono">
+          JMESPath Error: {{ jmesError }}
+        </div>
+
+        <!-- Panel Content Display Based on View Mode -->
         <div class="min-h-0 flex-1 overflow-auto p-2">
           <div v-if="isTreeCleared" class="p-2 font-mono text-xs text-muted">
-            Tree View cleared.
+            View panel cleared.
           </div>
-          <TreeViewer
-            v-else-if="!isEmpty && liveValidation.valid"
-            :node-key="null"
-            :value="parsedForTree"
-            path="$"
-            :depth="0"
-            @copy="handleCopy"
-            @download="handleDownload"
-            @sort="handleSortToggle"
-          />
-          <p v-else class="p-2 text-xs text-muted">
-            {{ isEmpty ? t('tree.emptyState') : t('tree.fixError') }}
-          </p>
+
+          <!-- 1. Interactive Tree View -->
+          <template v-else-if="viewMode === 'tree'">
+            <TreeViewer
+              v-if="!isEmpty && liveValidation.valid && filteredParsedData !== undefined"
+              :node-key="null"
+              :value="filteredParsedData"
+              path="$"
+              :depth="0"
+              @copy="handleCopy"
+              @download="handleDownload"
+              @sort="handleSortToggle"
+            />
+            <p v-else-if="(searchQuery || jmesQuery) && filteredParsedData === undefined" class="p-2 text-xs text-muted">
+              No matching fields found.
+            </p>
+            <p v-else class="p-2 text-xs text-muted">
+              {{ isEmpty ? t('tree.emptyState') : t('tree.fixError') }}
+            </p>
+          </template>
+
+          <!-- 2. Formatted Raw Text View -->
+          <template v-else-if="viewMode === 'text'">
+            <pre v-if="!isEmpty && liveValidation.valid && filteredFormattedText" class="whitespace-pre-wrap font-mono text-xs text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredFormattedText }}</pre>
+            <p v-else-if="(searchQuery || jmesQuery) && !filteredFormattedText" class="p-2 text-xs text-muted">
+              No matching fields found.
+            </p>
+            <p v-else class="p-2 text-xs text-muted">
+              {{ isEmpty ? t('tree.emptyState') : t('tree.fixError') }}
+            </p>
+          </template>
+
+          <!-- 3. Dynamic Table View with Search/Filter -->
+          <template v-else-if="viewMode === 'table'">
+            <div v-if="!isEmpty && liveValidation.valid && filteredTableData.length > 0" class="overflow-x-auto p-1">
+              <table class="w-full text-left font-mono text-xs border-collapse border border-surface-hair">
+                <thead>
+                  <tr class="bg-surface-raised border-b border-surface-hair text-muted uppercase text-[10px]">
+                    <th v-for="header in tableHeaders" :key="header" class="px-2.5 py-1.5 border-r border-surface-hair">
+                      {{ header }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(row, idx) in filteredTableData" :key="idx" class="border-b border-surface-hair/50 hover:bg-surface-hair/20">
+                    <td 
+                      v-for="header in tableHeaders" 
+                      :key="header" 
+                      class="px-2.5 py-1.5 border-r border-surface-hair/50 text-parchment/90 break-all whitespace-pre-wrap font-mono align-top"
+                    >
+                      {{ formatTableCellValue(row[header]) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p v-else class="p-2 text-xs text-muted">
+              {{ (searchQuery || jmesQuery) ? 'No matching fields found.' : (isEmpty ? t('tree.emptyState') : t('tree.fixError')) }}
+            </p>
+          </template>
+
+          <!-- 4. Read-Only Code View -->
+          <template v-else-if="viewMode === 'code'">
+            <div v-if="!isEmpty && liveValidation.valid && filteredFormattedText" class="h-full">
+              <ClientOnly>
+                <JsonEditor :model-value="filteredFormattedText" readonly />
+              </ClientOnly>
+            </div>
+            <p v-else-if="(searchQuery || jmesQuery) && !filteredFormattedText" class="p-2 text-xs text-muted">
+              No matching fields found.
+            </p>
+            <p v-else class="p-2 text-xs text-muted">
+              {{ isEmpty ? t('tree.emptyState') : t('tree.fixError') }}
+            </p>
+          </template>
         </div>
       </section>
     </main>
