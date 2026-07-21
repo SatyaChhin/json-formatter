@@ -49,6 +49,34 @@ const isTreeCleared = ref(false)
 const treeCopied = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
+// Resizable panel states
+const leftPanelWidth = ref<number>(50) // Default percentage width of the left panel
+const isResizing = ref(false)
+
+function startResize() {
+  isResizing.value = true
+  window.addEventListener('mousemove', onResize)
+  window.addEventListener('mouseup', stopResize)
+}
+
+function onResize(event: MouseEvent) {
+  if (!isResizing.value) return
+  
+  const totalWidth = window.innerWidth
+  const newWidthPercent = (event.clientX / totalWidth) * 100
+  
+  // Clamp between 20% and 80% to prevent collapsing completely
+  if (newWidthPercent >= 20 && newWidthPercent <= 80) {
+    leftPanelWidth.value = newWidthPercent
+  }
+}
+
+function stopResize() {
+  isResizing.value = false
+  window.removeEventListener('mousemove', onResize)
+  window.removeEventListener('mouseup', stopResize)
+}
+
 // Handle file upload for JSON formatting
 function triggerFileUpload() {
   fileInputRef.value?.click()
@@ -393,11 +421,11 @@ onMounted(() => {
     </div>
 
     <!-- Main workspace -->
-    <main class="flex min-h-0 flex-1 gap-3 p-4">
+    <main class="flex min-h-0 flex-1 gap-0 p-4 select-none">
       <!-- Left Panel: Code Editor Section -->
       <section
-        class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
-        :class="showTree ? 'basis-1/2' : 'basis-full'"
+        class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
+        :style="showTree ? `flex-basis: ${leftPanelWidth}%` : 'flex-basis: 100%'"
       >
         <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
           <span class="text-[11px] uppercase tracking-wide text-muted">{{ t('editor.label') }}</span>
@@ -434,10 +462,20 @@ onMounted(() => {
         </div>
       </section>
 
+      <!-- Resizable Splitter Bar -->
+      <div
+        v-if="showTree"
+        class="w-3 flex items-center justify-center cursor-col-resize group px-0.5"
+        @mousedown="startResize"
+      >
+        <div class="h-8 w-1 rounded-full bg-surface-hair group-hover:bg-key transition-colors"></div>
+      </div>
+
       <!-- Right Panel: View Mode Selector (Tree / Text / Table / Code) -->
       <section
         v-if="showTree"
-        class="flex min-h-0 basis-1/2 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
+        class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
+        :style="`flex-basis: ${100 - leftPanelWidth}%`"
       >
         <!-- Header with 4 Mode Selector, Search Inputs & Toolbar Actions -->
         <div class="flex flex-col border-b border-surface-hair">
