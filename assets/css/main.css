@@ -1,0 +1,97 @@
+/* assets/css/main.css */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Dark theme (default) — rgb triplets consumed by tailwind.config.ts */
+  --c-ink: 18 20 28;
+  --c-ink-soft: 23 26 36;
+  --c-surface: 27 31 44;
+  --c-surface-raised: 35 40 56;
+  --c-surface-hair: 43 48 64;
+  --c-parchment: 232 230 222;
+  --c-muted: 136 144 166;
+
+  --c-key: 139 147 248;
+  --c-key-dim: 90 95 168;
+  --c-string: 111 207 151;
+  --c-string-dim: 63 122 92;
+  --c-number: 242 177 68;
+  --c-number-dim: 168 122 49;
+  --c-boolean: 240 113 120;
+  --c-boolean-dim: 166 79 84;
+}
+
+/* Light theme — same variable names, deeper accent values for AA contrast on white */
+.light {
+  --c-ink: 247 248 250;
+  --c-ink-soft: 240 241 245;
+  --c-surface: 255 255 255;
+  --c-surface-raised: 244 245 248;
+  --c-surface-hair: 224 226 232;
+  --c-parchment: 24 26 34;
+  --c-muted: 100 106 122;
+
+  --c-key: 79 84 209;
+  --c-key-dim: 178 181 240;
+  --c-string: 24 128 77;
+  --c-string-dim: 140 199 168;
+  --c-number: 168 111 8;
+  --c-number-dim: 214 176 103;
+  --c-boolean: 194 47 58;
+  --c-boolean-dim: 224 150 156;
+}
+
+html,
+body,
+#__nuxt {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink text-parchment font-sans antialiased;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+/* Khmer needs its own script-appropriate face; Manrope has no Khmer glyphs */
+html[lang='km'] body {
+  font-family: 'Noto Sans Khmer', Manrope, ui-sans-serif, sans-serif;
+}
+
+::selection {
+  background-color: theme('colors.key.DEFAULT');
+  color: theme('colors.ink.DEFAULT');
+}
+
+/* Thin, quiet scrollbars that match the surface */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: theme('colors.surface.hair') transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: theme('colors.surface.hair');
+  border-radius: 8px;
+}
+
+/* Visible keyboard focus everywhere, no exceptions */
+:focus-visible {
+  outline: 2px solid theme('colors.key.DEFAULT');
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

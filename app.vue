@@ -1,0 +1,235 @@
+<script setup lang="ts">
+import { computed, onMounted, ref, watch } from 'vue'
+import { CheckCircle2, XCircle, Sun, Moon } from 'lucide-vue-next'
+import { useJsonFormatter } from '~/composables/useJsonFormatter'
+import { useClipboard } from '~/composables/useClipboard'
+import { useLocale } from '~/composables/useLocale'
+import { useTheme } from '~/composables/useTheme'
+import { sampleDatasets } from '~/utils/sampleData'
+import { localeOptions } from '~/types/i18n'
+import type { IndentSize, SampleDataset } from '~/types/json'
+import type { Locale } from '~/types/i18n'
+
+const { state, options, validate, format, minify, setIndentSize, toggleSortKeys, clear, loadSample, canDownload } =
+  useJsonFormatter()
+const { toasts, copyToClipboard, downloadJson } = useClipboard()
+const { locale, t, setLocale, initLocale } = useLocale()
+const { theme, toggleTheme, initTheme } = useTheme()
+
+// The editor is bound to `content`; formatter.state is only rewritten on
+// explicit actions (Format/Minify), so typing never fights the editor.
+const content = ref('')
+const showTree = ref(false)
+
+// Live, side-effect-free validation on every keystroke for the error banner.
+const liveValidation = computed(() => validate(content.value))
+const isEmpty = computed(() => content.value.trim() === '')
+
+const parsedForTree = computed<unknown>(() => {
+  if (!liveValidation.value.valid) return undefined
+  return liveValidation.value.data
+})
+
+function runFormat() {
+  if (format(content.value)) {
+    content.value = state.value.formatted
+  }
+}
+
+function runMinify() {
+  if (minify(content.value)) {
+    content.value = state.value.formatted
+  }
+}
+
+function handleIndentChange(size: IndentSize) {
+  setIndentSize(size)
+  if (state.value.isValid && content.value.trim() !== '') {
+    content.value = state.value.formatted
+  }
+}
+
+function handleSortToggle() {
+  toggleSortKeys()
+  if (state.value.isValid && content.value.trim() !== '') {
+    content.value = state.value.formatted
+  }
+}
+
+function handleClear() {
+  content.value = ''
+  clear()
+}
+
+function handleLoadSample(sample: SampleDataset) {
+  loadSample(sample.json)
+  content.value = state.value.formatted || sample.json
+}
+
+function handleCopy() {
+  copyToClipboard(content.value)
+}
+
+function handleDownload() {
+  downloadJson(content.value, 'data.json')
+}
+
+function handleLocaleSelect(next: Locale) {
+  setLocale(next)
+}
+
+// Keep formatter.state.raw in sync so options (indent/sort) re-apply correctly
+// even when the user edits by hand rather than clicking Format.
+watch(content, (next) => {
+  state.value.raw = next
+})
+
+onMounted(() => {
+  initTheme()
+  initLocale()
+})
+</script>
+
+<template>
+  <div class="flex h-screen flex-col bg-ink text-parchment">
+    <!-- Header -->
+    <header class="flex items-center justify-between border-b border-surface-hair bg-surface px-5 py-3">
+      <div class="flex items-center gap-2.5">
+        <span class="flex h-9 w-9 items-center justify-center rounded bg-key/15">
+          <Logo :size="22" />
+        </span>
+        <div class="leading-tight">
+          <h1 class=" text-sm font-semibold text-parchment">{{ t('header.title') }}</h1>
+          <p class="text-xs text-muted">{{ t('header.subtitle') }}</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2  text-xs">
+          <template v-if="!isEmpty">
+            <span v-if="liveValidation.valid" class="flex items-center gap-1.5 text-string">
+              <CheckCircle2 class="h-4 w-4" aria-hidden="true" />
+              {{ t('status.valid') }}
+            </span>
+            <span v-else class="flex items-center gap-1.5 text-boolean">
+              <XCircle class="h-4 w-4" aria-hidden="true" />
+              {{ t('status.invalid') }}
+            </span>
+          </template>
+        </div>
+
+        <div class="h-5 w-px bg-surface-hair" aria-hidden="true" />
+
+        <!-- Language switch -->
+        <div class="flex items-center rounded border border-surface-hair p-0.5 text-xs" :aria-label="t('lang.label')">
+          <button
+            v-for="opt in localeOptions"
+            :key="opt.code"
+            type="button"
+            class="rounded px-2 py-1  transition"
+            :class="locale === opt.code ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
+            :aria-pressed="locale === opt.code"
+            :lang="opt.code"
+            @click="handleLocaleSelect(opt.code)"
+          >
+            {{ opt.code.toUpperCase() }}
+          </button>
+        </div>
+
+        <!-- Theme toggle -->
+        <button
+          type="button"
+          class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+          :title="theme === 'dark' ? t('theme.toLight') : t('theme.toDark')"
+          :aria-label="theme === 'dark' ? t('theme.toLight') : t('theme.toDark')"
+          @click="toggleTheme"
+        >
+          <Sun v-if="theme === 'dark'" class="h-4 w-4" aria-hidden="true" />
+          <Moon v-else class="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+    </header>
+
+    <!-- Toolbar -->
+    <Toolbar
+      :indent-size="options.indentSize"
+      :sort-keys="options.sortKeys ?? false"
+      :show-tree="showTree"
+      :can-download="canDownload || (!isEmpty && liveValidation.valid)"
+      :samples="sampleDatasets"
+      @format="runFormat"
+      @minify="runMinify"
+      @clear="handleClear"
+      @copy="handleCopy"
+      @download="handleDownload"
+      @load-sample="handleLoadSample"
+      @toggle-tree="showTree = !showTree"
+      @toggle-sort="handleSortToggle"
+      @update:indent-size="handleIndentChange"
+    />
+
+    <!-- Error banner -->
+    <div v-if="!isEmpty && !liveValidation.valid && liveValidation.error" class="px-4 pt-3">
+      <ErrorBanner :error="liveValidation.error" />
+    </div>
+
+    <!-- Main workspace -->
+    <main class="flex min-h-0 flex-1 gap-3 p-4">
+      <section
+        class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
+        :class="showTree ? 'basis-1/2' : 'basis-full'"
+      >
+        <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
+          <span class=" text-[11px] uppercase tracking-wide text-muted">{{ t('editor.label') }}</span>
+        </div>
+        <div class="min-h-0 flex-1">
+          <ClientOnly>
+            <JsonEditor v-model="content" />
+            <template #fallback>
+              <div class="flex h-full items-center justify-center  text-xs text-muted">
+                {{ t('editor.loading') }}
+              </div>
+            </template>
+          </ClientOnly>
+        </div>
+      </section>
+
+      <section
+        v-if="showTree"
+        class="flex min-h-0 basis-1/2 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
+      >
+        <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
+          <span class=" text-[11px] uppercase tracking-wide text-muted">{{ t('tree.label') }}</span>
+        </div>
+        <div class="min-h-0 flex-1 overflow-auto p-2">
+          <TreeViewer
+            v-if="!isEmpty && liveValidation.valid"
+            :node-key="null"
+            :value="parsedForTree"
+            path="$"
+            :depth="0"
+          />
+          <p v-else class="p-2  text-xs text-muted">
+            {{ isEmpty ? t('tree.emptyState') : t('tree.fixError') }}
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Toasts -->
+    <div class="pointer-events-none fixed bottom-4 right-4 flex flex-col gap-2">
+      <div
+        v-for="toast in toasts"
+        :key="toast.id"
+        class="rounded border px-3 py-2  text-xs shadow-panel"
+        :class="{
+          'border-string/40 bg-string/10 text-string': toast.variant === 'success',
+          'border-boolean/40 bg-boolean/10 text-boolean': toast.variant === 'error',
+          'border-surface-hair bg-surface-raised text-parchment': toast.variant === 'info',
+        }"
+      >
+        {{ toast.text }}
+      </div>
+    </div>
+  </div>
+</template>
