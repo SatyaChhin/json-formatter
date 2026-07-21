@@ -1,4 +1,3 @@
-// composables/useJsonFormatter.ts
 import { ref, computed, type Ref } from 'vue'
 import type {
   EditorState,
@@ -8,13 +7,6 @@ import type {
   IndentSize,
 } from '~/types/json'
 
-/**
- * Extracts line/column info from a JSON.parse SyntaxError message.
- * V8's messages look like: "Unexpected token } in JSON at position 42"
- * or, on newer V8, "... in JSON at position 42 (line 3 column 1)".
- * Firefox/Safari phrase things differently; we fall back gracefully
- * to a message-only error when we can't locate a position.
- */
 function locateError(raw: string, message: string): ValidationError {
   const lineColMatch = message.match(/line (\d+) column (\d+)/i)
   if (lineColMatch) {
@@ -52,6 +44,16 @@ export function useJsonFormatter() {
     sortKeys: false,
   })
 
+  // Computed property to extract parsed object for Tree View
+  const parsedData = computed(() => {
+    if (!state.value.isValid || !state.value.formatted) return null
+    try {
+      return JSON.parse(state.value.formatted)
+    } catch {
+      return null
+    }
+  })
+
   /** Pure validation — no state mutation, safe to call on every keystroke */
   function validate(input: string): ValidationResult {
     if (input.trim() === '') {
@@ -66,14 +68,23 @@ export function useJsonFormatter() {
     }
   }
 
-  function sortObjectKeysDeep(value: unknown): unknown {
+  /** Recursively sorts object keys alphabetically with circular reference handling */
+  function sortObjectKeysDeep(value: unknown, seen = new WeakSet()): unknown {
     if (Array.isArray(value)) {
-      return value.map(sortObjectKeysDeep)
+      return value.map((item) => sortObjectKeysDeep(item, seen))
     }
+
     if (value !== null && typeof value === 'object') {
+      if (seen.has(value as object)) {
+        return '[Circular Reference]'
+      }
+      seen.add(value as object)
+
       const sorted: Record<string, unknown> = {}
-      for (const k of Object.keys(value as Record<string, unknown>).sort()) {
-        sorted[k] = sortObjectKeysDeep((value as Record<string, unknown>)[k])
+      const keys = Object.keys(value as Record<string, unknown>).sort()
+
+      for (const k of keys) {
+        sorted[k] = sortObjectKeysDeep((value as Record<string, unknown>)[k], seen)
       }
       return sorted
     }
@@ -96,40 +107,51 @@ export function useJsonFormatter() {
     return true
   }
 
-  /** Formats/beautifies the given input, updates state, returns success flag */
-  function format(input: string, opts: Partial<FormatOptions> = {}): boolean {
+  /** Formats/beautifies input, syncs state for both Editor and Tree view */
+  function format(input?: string, opts: Partial<FormatOptions> = {}): boolean {
+    const targetInput = input !== undefined ? input : state.value.raw
     const merged = { ...options.value, ...opts }
-    const result = validate(input)
-    if (!result.valid) return applyResult(input, result)
+    const result = validate(targetInput)
+
+    if (!result.valid) return applyResult(targetInput, result)
 
     const dataToPrint = merged.sortKeys ? sortObjectKeysDeep(result.data) : result.data
     const pretty = result.data === undefined ? '' : JSON.stringify(dataToPrint, null, merged.indentSize)
-    return applyResult(input, result, pretty)
+    return applyResult(targetInput, result, pretty)
   }
 
-  /** Minifies the given input, updates state, returns success flag */
-  function minify(input: string): boolean {
-    const result = validate(input)
-    if (!result.valid) return applyResult(input, result)
+  /** Minifies the given input */
+  function minify(input?: string): boolean {
+    const targetInput = input !== undefined ? input : state.value.raw
+    const result = validate(targetInput)
+    if (!result.valid) return applyResult(targetInput, result)
 
     const compact = result.data === undefined ? '' : JSON.stringify(result.data)
-    return applyResult(input, result, compact)
+    return applyResult(targetInput, result, compact)
+  }
+
+  /** Sorts the JSON data keys and updates views */
+  function sortJsonData(): boolean {
+    options.value.sortKeys = true
+    return format()
+  }
+
+  /** Toggles sort keys setting and re-formats */
+  function toggleSortKeys() {
+    options.value.sortKeys = !options.value.sortKeys
+    if (state.value.isValid && state.value.raw.trim() !== '') {
+      format()
+    }
   }
 
   function setIndentSize(size: IndentSize) {
     options.value.indentSize = size
     if (state.value.isValid && state.value.raw.trim() !== '') {
-      format(state.value.raw)
+      format()
     }
   }
 
-  function toggleSortKeys() {
-    options.value.sortKeys = !options.value.sortKeys
-    if (state.value.isValid && state.value.raw.trim() !== '') {
-      format(state.value.raw)
-    }
-  }
-
+  /** Clears Editor text, Tree View state, and error logs */
   function clear() {
     state.value = {
       raw: '',
@@ -138,6 +160,32 @@ export function useJsonFormatter() {
       error: null,
       isDirty: false,
     }
+  }
+
+  /** Copies current formatted JSON code to the system clipboard */
+  async function copyCode(): Promise<boolean> {
+    if (!state.value.formatted) return false
+    try {
+      await navigator.clipboard.writeText(state.value.formatted)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  /** Downloads the formatted JSON as a file */
+  function downloadJson(filename = 'data.json') {
+    if (!state.value.formatted || !state.value.isValid) return
+
+    const blob = new Blob([state.value.formatted], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
   }
 
   function loadSample(sample: string) {
@@ -149,12 +197,16 @@ export function useJsonFormatter() {
   return {
     state,
     options,
+    parsedData,
     validate,
     format,
     minify,
-    setIndentSize,
+    sortJsonData,
     toggleSortKeys,
+    setIndentSize,
     clear,
+    copyCode,
+    downloadJson,
     loadSample,
     canDownload,
   }

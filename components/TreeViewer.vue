@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { ChevronRight } from 'lucide-vue-next'
-import { useLocale } from '~/composables/useLocale'
 import type { JsonValueType } from '~/types/json'
 
 defineOptions({ name: 'TreeViewer' })
@@ -12,16 +11,21 @@ const props = withDefaults(
     value: unknown
     path: string
     depth: number
+    isLast?: boolean
   }>(),
-  { depth: 0 }
+  { depth: 0, isLast: true }
 )
 
-const { t } = useLocale()
+const emit = defineEmits<{
+  copy: [jsonString?: string]
+  download: [jsonString?: string]
+  sort: []
+}>()
 
-function typeOf(value: unknown): JsonValueType {
-  if (value === null) return 'null'
-  if (Array.isArray(value)) return 'array'
-  const type = typeof value
+function typeOf(val: unknown): JsonValueType {
+  if (val === null) return 'null'
+  if (Array.isArray(val)) return 'array'
+  const type = typeof val
   if (type === 'object') return 'object'
   if (type === 'string') return 'string'
   if (type === 'number') return 'number'
@@ -40,13 +44,8 @@ const entries = computed<[string | number, unknown][]>(() => {
   return Object.entries(props.value as Record<string, unknown>)
 })
 
-// Top two levels start expanded so the shape of the document is visible immediately
-const expanded = ref(props.depth < 2)
-
-const containerLabel = computed(() => {
-  if (valueType.value === 'array') return `Array(${entries.value.length})`
-  return `Object(${entries.value.length})`
-})
+const expanded = ref(true)
+const isArrayItem = computed(() => typeof props.nodeKey === 'number')
 
 const previewClass = computed(() => {
   switch (valueType.value) {
@@ -72,41 +71,102 @@ const previewText = computed(() => {
       return String(props.value)
   }
 })
+
+function getFormattedJson(): string {
+  if (props.value === undefined || props.value === null) return ''
+  try {
+    return JSON.stringify(props.value, null, 2)
+  } catch {
+    return ''
+  }
+}
+
+function handleNodeCopy(e?: Event) {
+  if (e) e.stopPropagation()
+  const formatted = getFormattedJson()
+  emit('copy', formatted)
+}
+
+function handleNodeDownload(e?: Event) {
+  if (e) e.stopPropagation()
+  const formatted = getFormattedJson()
+  emit('download', formatted)
+}
 </script>
 
 <template>
   <div>
+    <!-- Root Level Opening Bracket (Depth 0) -->
+    <div v-if="depth === 0" class="px-1 font-mono text-sm text-muted">
+      {{ valueType === 'array' ? '[' : '{' }}
+    </div>
+
+    <!-- Depth > 0 Nodes -->
     <div
+      v-if="depth > 0"
       class="group flex cursor-pointer items-start gap-1 rounded px-1 py-0.5 font-mono text-sm hover:bg-surface-hair/40"
       :class="{ 'cursor-default': !isContainer }"
       @click="isContainer && (expanded = !expanded)"
     >
       <ChevronRight
-        v-if="isContainer"
+        v-if="isContainer && entries.length > 0"
         class="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted transition-transform"
         :class="{ 'rotate-90': expanded }"
         aria-hidden="true"
       />
       <span v-else class="w-3.5 shrink-0" />
 
-      <span v-if="nodeKey !== null" class="shrink-0 text-key">
-        {{ typeof nodeKey === 'number' ? nodeKey : `"${nodeKey}"` }}<span class="text-muted">:</span>
+      <!-- Key Name -->
+      <span v-if="nodeKey !== null && !isArrayItem" class="shrink-0 text-key">
+        "{{ nodeKey }}":
       </span>
 
-      <span v-if="isContainer" class="text-muted">{{ containerLabel }}</span>
-      <span v-else class="break-all" :class="previewClass">{{ previewText }}</span>
+      <!-- Empty Container -->
+      <span v-if="isContainer && entries.length === 0" class="text-muted">
+        {{ valueType === 'array' ? '[]' : '{}' }}<span v-if="!isLast">,</span>
+      </span>
+
+      <!-- Opening Bracket for Container -->
+      <span v-else-if="isContainer" class="text-muted">
+        {{ valueType === 'array' ? '[' : '{' }}
+      </span>
+
+      <!-- Primitive Value -->
+      <span v-else class="break-all" :class="previewClass">
+        {{ previewText }}<span v-if="!isLast" class="text-muted">,</span>
+      </span>
     </div>
 
-    <div v-if="isContainer && expanded" class="ml-4 border-l border-surface-hair pl-2">
+    <!-- Recursive Children -->
+    <div 
+      v-if="isContainer && expanded && entries.length > 0" 
+      class="ml-4 border-l border-surface-hair/30 pl-2"
+    >
       <TreeViewer
-        v-for="[k, v] in entries"
+        v-for="([k, v], index) in entries"
         :key="k"
         :node-key="k"
         :value="v"
         :path="`${path}.${k}`"
         :depth="depth + 1"
+        :is-last="index === entries.length - 1"
+        @copy="(val) => emit('copy', val)"
+        @download="(val) => emit('download', val)"
+        @sort="emit('sort')"
       />
-      <p v-if="entries.length === 0" class="px-1 py-0.5 font-mono text-xs text-muted">{{ t('tree.empty') }}</p>
+    </div>
+
+    <!-- Closing Bracket for Child Containers -->
+    <div 
+      v-if="depth > 0 && isContainer && entries.length > 0 && expanded" 
+      class="ml-4 px-1 font-mono text-sm text-muted"
+    >
+      {{ valueType === 'array' ? ']' : '}' }}<span v-if="!isLast">,</span>
+    </div>
+
+    <!-- Root Level Closing Bracket (Depth 0) -->
+    <div v-if="depth === 0" class="px-1 font-mono text-sm text-muted">
+      {{ valueType === 'array' ? ']' : '}' }}
     </div>
   </div>
 </template>

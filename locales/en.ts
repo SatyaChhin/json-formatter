@@ -23,6 +23,11 @@ export const en = {
   'tree.empty': 'empty',
   'tree.emptyState': 'Nothing to inspect yet — paste or load some JSON.',
   'tree.fixError': 'Fix the syntax error to inspect the tree.',
+  'tree.sort': 'Sort keys',
+  'tree.copy' : "Copy",
+  'tree.download' : "download",
+  'tree.clear' : "Clear",
+
 
   'error.title': 'Invalid JSON',
 
@@ -34,6 +39,8 @@ export const en = {
 
   'theme.toLight': 'Switch to light mode',
   'theme.toDark': 'Switch to dark mode',
+
+
 
   'lang.label': 'Language',
 } as const

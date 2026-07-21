@@ -25,6 +25,11 @@ export const km = {
   'tree.emptyState': 'មិនទាន់មានអ្វីត្រូវពិនិត្យទេ — សូមបិទភ្ជាប់ ឬផ្ទុក JSON។',
   'tree.fixError': 'សូមកែកំហុសវាក្យសម្ព័ន្ធសិន ដើម្បីមើលមែកធាង។',
 
+  'tree.sort': 'Sort keys',
+  'tree.copy' : "Copy",
+  'tree.download' : "download",
+  'tree.clear' : "Clear",
+
   'error.title': 'JSON មិនត្រឹមត្រូវ',
 
   'toast.copied': 'បានចម្លងទៅក្ដារតម្បៀតខ្ទាស់',
