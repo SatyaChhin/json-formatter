@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
 import jmespath from 'jmespath'
 import {
   CheckCircle2,
@@ -18,7 +18,9 @@ import {
   Search,
   X,
   Code,
-  Upload
+  Upload,
+  Maximize2,
+  Minimize2
 } from 'lucide-vue-next'
 import { useJsonFormatter } from '~/composables/useJsonFormatter'
 import { useClipboard } from '~/composables/useClipboard'
@@ -48,6 +50,23 @@ const jmesError = ref<string | null>(null)
 const isTreeCleared = ref(false)
 const treeCopied = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+// Fullscreen state
+const isFullscreen = ref(false)
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch((err) => {
+      console.error(`Error attempting to enable fullscreen: ${err.message}`)
+    })
+  } else {
+    document.exitFullscreen()
+  }
+}
+
+function handleFullscreenChange() {
+  isFullscreen.value = !!document.fullscreenElement
+}
 
 // Resizable panel states
 const leftPanelWidth = ref<number>(50) // Default percentage width of the left panel
@@ -334,6 +353,11 @@ function handleLocaleSelect(next: Locale) {
 onMounted(() => {
   initTheme()
   initLocale()
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('fullscreenchange', handleFullscreenChange)
 })
 </script>
 
@@ -380,6 +404,13 @@ onMounted(() => {
           :aria-label="theme === 'dark' ? t('theme.toLight') : t('theme.toDark')" @click="toggleTheme">
           <Sun v-if="theme === 'dark'" class="h-4 w-4" aria-hidden="true" />
           <Moon v-else class="h-4 w-4" aria-hidden="true" />
+        </button>
+        <button type="button"
+          class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+          :title="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'"
+          :aria-label="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'" @click="toggleFullscreen">
+          <Minimize2 v-if="isFullscreen" class="h-4 w-4" aria-hidden="true" />
+          <Maximize2 v-else class="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
     </header>
