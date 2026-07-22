@@ -57,7 +57,7 @@ export const sampleDatasets: SampleDataset[] = [
     label: 'App config',
     json: JSON.stringify(
       {
-        appName: 'json-formatter-clone',
+        appName: 'json-formatter',
         version: '1.0.0',
         features: {
           treeView: true,
