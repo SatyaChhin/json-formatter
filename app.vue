@@ -1,21 +1,21 @@
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from 'vue'
 import jmespath from 'jmespath'
-import { 
-  CheckCircle2, 
-  XCircle, 
-  Sun, 
-  Moon, 
-  FolderTree, 
-  ArrowUpDown, 
-  Copy, 
-  Download, 
-  Trash2, 
-  Check, 
-  Code2, 
-  FileText, 
-  Table, 
-  Search, 
+import {
+  CheckCircle2,
+  XCircle,
+  Sun,
+  Moon,
+  FolderTree,
+  ArrowUpDown,
+  Copy,
+  Download,
+  Trash2,
+  Check,
+  Code2,
+  FileText,
+  Table,
+  Search,
   X,
   Code,
   Upload
@@ -40,7 +40,7 @@ const { theme, toggleTheme, initTheme } = useTheme()
 
 // Editor state content, view mode & search query
 const content = ref('')
-const showTree = ref(true) 
+const showTree = ref(true)
 const viewMode = ref<ViewMode>('tree') // Modes: 'tree', 'text', 'table', 'code'
 const searchQuery = ref('')            // Search/Find field state
 const jmesQuery = ref('')              // JMESPath Query State
@@ -61,10 +61,10 @@ function startResize() {
 
 function onResize(event: MouseEvent) {
   if (!isResizing.value) return
-  
+
   const totalWidth = window.innerWidth
   const newWidthPercent = (event.clientX / totalWidth) * 100
-  
+
   // Clamp between 20% and 80% to prevent collapsing completely
   if (newWidthPercent >= 20 && newWidthPercent <= 80) {
     leftPanelWidth.value = newWidthPercent
@@ -177,28 +177,28 @@ const filteredParsedData = computed(() => {
 const tableData = computed<Array<Record<string, unknown>>>(() => {
   const data = filteredParsedData.value !== undefined ? filteredParsedData.value : parsedForTree.value
   if (!data) return []
-  
+
   if (Array.isArray(data)) {
     return data.map((item, idx) => {
       if (typeof item === 'object' && item !== null) return { _index: idx, ...item }
       return { _index: idx, value: item }
     })
   }
-  
+
   if (typeof data === 'object' && data !== null) {
     return Object.entries(data).map(([key, value]) => ({
       key,
       value
     }))
   }
-  
+
   return []
 })
 
 // Filtered Table Data based on Search Query
 const filteredTableData = computed(() => {
   if (!searchQuery.value.trim()) return tableData.value
-  
+
   const query = searchQuery.value.toLowerCase().trim()
   return tableData.value.filter(row => {
     return Object.entries(row).some(([key, val]) => {
@@ -305,7 +305,7 @@ function handleLoadSample(sample: SampleDataset) {
 function handleCopy(payload?: string) {
   const textToCopy = (typeof payload === 'string' && payload) ? payload : filteredFormattedText.value
   if (!textToCopy) return
-  
+
   copyToClipboard(textToCopy)
   treeCopied.value = true
   setTimeout(() => {
@@ -339,10 +339,13 @@ onMounted(() => {
 
 <template>
   <div class="flex h-screen flex-col bg-ink text-parchment">
-    <!-- Header -->
     <header class="flex items-center justify-between border-b border-surface-hair bg-surface px-5 py-3">
-      <div class="flex items-center gap-2.5">
-        <span class="flex h-9 w-9 items-center justify-center rounded bg-key/15">
+      <div class="flex items-center gap-3">
+        <span
+          class="flex h-10 w-10 items-center justify-center rounded bg-surface-raised border border-surface-hair overflow-hidden p-1">
+          <img src="public/npca_logo.png" alt="NPCA Logo" class="h-full w-full object-contain" />
+        </span>
+        <span class="flex h-9 w-9 items-center justify-center rounded bg-key/15 border border-key/30">
           <Logo :size="22" />
         </span>
         <div class="leading-tight">
@@ -350,7 +353,6 @@ onMounted(() => {
           <p class="text-xs text-muted">{{ t('header.subtitle') }}</p>
         </div>
       </div>
-
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2 text-xs">
           <template v-if="!isEmpty">
@@ -364,87 +366,44 @@ onMounted(() => {
             </span>
           </template>
         </div>
-
         <div class="h-5 w-px bg-surface-hair" aria-hidden="true" />
-
-        <!-- Language switch -->
         <div class="flex items-center rounded border border-surface-hair p-0.5 text-xs" :aria-label="t('lang.label')">
-          <button
-            v-for="opt in localeOptions"
-            :key="opt.code"
-            type="button"
-            class="rounded px-2 py-1 transition"
+          <button v-for="opt in localeOptions" :key="opt.code" type="button" class="rounded px-2 py-1 transition"
             :class="locale === opt.code ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
-            :aria-pressed="locale === opt.code"
-            :lang="opt.code"
-            @click="handleLocaleSelect(opt.code)"
-          >
+            :aria-pressed="locale === opt.code" :lang="opt.code" @click="handleLocaleSelect(opt.code)">
             {{ opt.code.toUpperCase() }}
           </button>
         </div>
-
-        <!-- Theme toggle -->
-        <button
-          type="button"
+        <button type="button"
           class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
           :title="theme === 'dark' ? t('theme.toLight') : t('theme.toDark')"
-          :aria-label="theme === 'dark' ? t('theme.toLight') : t('theme.toDark')"
-          @click="toggleTheme"
-        >
+          :aria-label="theme === 'dark' ? t('theme.toLight') : t('theme.toDark')" @click="toggleTheme">
           <Sun v-if="theme === 'dark'" class="h-4 w-4" aria-hidden="true" />
           <Moon v-else class="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
     </header>
+    <Toolbar :indent-size="options.indentSize" :sort-keys="options.sortKeys ?? false" :show-tree="showTree"
+      :can-download="canDownload || (!isEmpty && liveValidation.valid)" :samples="sampleDatasets" @format="runFormat"
+      @minify="runMinify" @clear="handleClear" @copy="handleCopy()" @download="handleDownload()"
+      @load-sample="handleLoadSample" @toggle-tree="showTree = !showTree" @toggle-sort="handleSortToggle"
+      @update:indent-size="handleIndentChange" />
 
-    <!-- Toolbar -->
-    <Toolbar
-      :indent-size="options.indentSize"
-      :sort-keys="options.sortKeys ?? false"
-      :show-tree="showTree"
-      :can-download="canDownload || (!isEmpty && liveValidation.valid)"
-      :samples="sampleDatasets"
-      @format="runFormat"
-      @minify="runMinify"
-      @clear="handleClear"
-      @copy="handleCopy()"
-      @download="handleDownload()"
-      @load-sample="handleLoadSample"
-      @toggle-tree="showTree = !showTree"
-      @toggle-sort="handleSortToggle"
-      @update:indent-size="handleIndentChange"
-    />
-
-    <!-- Error banner -->
     <div v-if="!isEmpty && !liveValidation.valid && liveValidation.error" class="px-4 pt-3">
       <ErrorBanner :error="liveValidation.error" />
     </div>
 
-    <!-- Main workspace -->
     <main class="flex min-h-0 flex-1 gap-0 p-4 select-none">
-      <!-- Left Panel: Code Editor Section -->
       <section
         class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
-        :style="showTree ? `flex-basis: ${leftPanelWidth}%` : 'flex-basis: 100%'"
-      >
+        :style="showTree ? `flex-basis: ${leftPanelWidth}%` : 'flex-basis: 100%'">
         <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
           <span class="text-[11px] uppercase tracking-wide text-muted">{{ t('editor.label') }}</span>
-          
-          <!-- Hidden File Input & Upload Trigger Button -->
           <div>
-            <input 
-              ref="fileInputRef" 
-              type="file" 
-              accept=".json,.txt" 
-              class="hidden" 
-              @change="handleFileChange" 
-            />
-            <button
-              type="button"
+            <input ref="fileInputRef" type="file" accept=".json,.txt" class="hidden" @change="handleFileChange" />
+            <button type="button"
               class="flex items-center gap-1 rounded border border-surface-hair bg-surface-raised px-2 py-0.5 text-[11px] text-parchment transition hover:border-key/50 hover:text-key"
-              title="Upload JSON File"
-              @click="triggerFileUpload"
-            >
+              title="Upload JSON File" @click="triggerFileUpload">
               <Upload class="h-3 w-3 text-key" />
               <span>Upload File</span>
             </button>
@@ -461,144 +420,91 @@ onMounted(() => {
           </ClientOnly>
         </div>
       </section>
-
-      <!-- Resizable Splitter Bar -->
-      <div
-        v-if="showTree"
-        class="w-3 flex items-center justify-center cursor-col-resize group px-0.5"
-        @mousedown="startResize"
-      >
+      <div v-if="showTree" class="w-3 flex items-center justify-center cursor-col-resize group px-0.5"
+        @mousedown="startResize">
         <div class="h-8 w-1 rounded-full bg-surface-hair group-hover:bg-key transition-colors"></div>
       </div>
-
-      <!-- Right Panel: View Mode Selector (Tree / Text / Table / Code) -->
-      <section
-        v-if="showTree"
+      <section v-if="showTree"
         class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
-        :style="`flex-basis: ${100 - leftPanelWidth}%`"
-      >
-        <!-- Header with 4 Mode Selector, Search Inputs & Toolbar Actions -->
+        :style="`flex-basis: ${100 - leftPanelWidth}%`">
         <div class="flex flex-col border-b border-surface-hair">
           <div class="flex items-center justify-between gap-2 px-3 py-1.5">
-            
-            <!-- Mode Switching Controls -->
             <div class="flex items-center gap-1 shrink-0 rounded bg-surface-raised p-0.5 text-xs">
-              <button
-                type="button"
+              <button type="button"
                 class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
                 :class="viewMode === 'tree' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
-                @click="viewMode = 'tree'"
-              >
+                @click="viewMode = 'tree'">
                 <FolderTree class="h-3 w-3" />
                 Tree
               </button>
-              <button
-                type="button"
+              <button type="button"
                 class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
                 :class="viewMode === 'text' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
-                @click="viewMode = 'text'"
-              >
+                @click="viewMode = 'text'">
                 <FileText class="h-3 w-3" />
                 Text
               </button>
-              <button
-                type="button"
+              <button type="button"
                 class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
                 :class="viewMode === 'table' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
-                @click="viewMode = 'table'"
-              >
+                @click="viewMode = 'table'">
                 <Table class="h-3 w-3" />
                 Table
               </button>
-              <button
-                type="button"
+              <button type="button"
                 class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
                 :class="viewMode === 'code' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
-                @click="viewMode = 'code'"
-              >
+                @click="viewMode = 'code'">
                 <Code2 class="h-3 w-3" />
                 Code
               </button>
             </div>
-
-            <!-- Find / Quick Search Input Box -->
             <div class="relative flex items-center flex-1 max-w-[160px]">
               <Search class="absolute left-2 h-3.5 w-3.5 text-muted pointer-events-none" />
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Find field..."
-                class="w-full rounded border border-surface-hair bg-surface-raised pl-7 pr-6 py-0.5 text-xs text-parchment placeholder-muted/60 focus:border-key/50 focus:outline-none"
-              />
-              <button
-                v-if="searchQuery"
-                type="button"
-                class="absolute right-1.5 text-muted hover:text-parchment"
-                @click="searchQuery = ''"
-              >
+              <input v-model="searchQuery" type="text" placeholder="Find field..."
+                class="w-full rounded border border-surface-hair bg-surface-raised pl-7 pr-6 py-0.5 text-xs text-parchment placeholder-muted/60 focus:border-key/50 focus:outline-none" />
+              <button v-if="searchQuery" type="button" class="absolute right-1.5 text-muted hover:text-parchment"
+                @click="searchQuery = ''">
                 <X class="h-3 w-3" />
               </button>
             </div>
-
-            <!-- Action Buttons -->
             <div class="flex items-center gap-1 shrink-0">
-              <button
-                type="button"
+              <button type="button"
                 class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
-                title="Sort Keys"
-                @click="handleSortToggle"
-              >
+                title="Sort Keys" @click="handleSortToggle">
                 <ArrowUpDown class="h-3.5 w-3.5" />
               </button>
 
-              <button
-                type="button"
+              <button type="button"
                 class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
-                title="Copy Formatted JSON"
-                @click="handleCopy()"
-              >
+                title="Copy Formatted JSON" @click="handleCopy()">
                 <Check v-if="treeCopied" class="h-3.5 w-3.5 text-key" />
                 <Copy v-else class="h-3.5 w-3.5" />
               </button>
 
-              <button
-                type="button"
+              <button type="button"
                 class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
-                title="Download Formatted JSON"
-                @click="handleDownload()"
-              >
+                title="Download Formatted JSON" @click="handleDownload()">
                 <Download class="h-3.5 w-3.5" />
               </button>
 
-              <button
-                type="button"
+              <button type="button"
                 class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-boolean/50 hover:text-boolean"
-                title="Clear Panel"
-                @click="handleClearTreeOnly"
-              >
+                title="Clear Panel" @click="handleClearTreeOnly">
                 <Trash2 class="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
-
-          <!-- JMESPath Query Bar -->
           <div class="flex items-center gap-2 border-t border-surface-hair/60 bg-surface-raised/40 px-3 py-1">
             <Code class="h-3.5 w-3.5 text-key shrink-0" />
             <span class="text-[11px] font-mono font-medium text-key">JMESPath:</span>
-            
+
             <div class="relative flex-1">
-              <input
-                v-model="jmesQuery"
-                type="text"
-                placeholder="e.g. medical_histories[*].value[] or code"
-                class="w-full rounded border border-surface-hair bg-surface pl-2 pr-6 py-0.5 font-mono text-xs text-parchment placeholder-muted/40 focus:border-key/50 focus:outline-none"
-              />
-              <button
-                v-if="jmesQuery"
-                type="button"
+              <input v-model="jmesQuery" type="text" placeholder="e.g. medical_histories[*].value[] or code"
+                class="w-full rounded border border-surface-hair bg-surface pl-2 pr-6 py-0.5 font-mono text-xs text-parchment placeholder-muted/40 focus:border-key/50 focus:outline-none" />
+              <button v-if="jmesQuery" type="button"
                 class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-parchment"
-                @click="jmesQuery = ''"
-              >
+                @click="jmesQuery = ''">
                 <X class="h-3 w-3" />
               </button>
             </div>
@@ -606,7 +512,8 @@ onMounted(() => {
         </div>
 
         <!-- JMESPath Error Box -->
-        <div v-if="jmesError" class="bg-boolean/10 border-b border-boolean/30 px-3 py-1.5 text-xs text-boolean font-mono">
+        <div v-if="jmesError"
+          class="bg-boolean/10 border-b border-boolean/30 px-3 py-1.5 text-xs text-boolean font-mono">
           JMESPath Error: {{ jmesError }}
         </div>
 
@@ -618,17 +525,11 @@ onMounted(() => {
 
           <!-- 1. Interactive Tree View -->
           <template v-else-if="viewMode === 'tree'">
-            <TreeViewer
-              v-if="!isEmpty && liveValidation.valid && filteredParsedData !== undefined"
-              :node-key="null"
-              :value="filteredParsedData"
-              path="$"
-              :depth="0"
-              @copy="handleCopy"
-              @download="handleDownload"
-              @sort="handleSortToggle"
-            />
-            <p v-else-if="(searchQuery || jmesQuery) && filteredParsedData === undefined" class="p-2 text-xs text-muted">
+            <TreeViewer v-if="!isEmpty && liveValidation.valid && filteredParsedData !== undefined" :node-key="null"
+              :value="filteredParsedData" path="$" :depth="0" @copy="handleCopy" @download="handleDownload"
+              @sort="handleSortToggle" />
+            <p v-else-if="(searchQuery || jmesQuery) && filteredParsedData === undefined"
+              class="p-2 text-xs text-muted">
               No matching fields found.
             </p>
             <p v-else class="p-2 text-xs text-muted">
@@ -638,7 +539,8 @@ onMounted(() => {
 
           <!-- 2. Formatted Raw Text View -->
           <template v-else-if="viewMode === 'text'">
-            <pre v-if="!isEmpty && liveValidation.valid && filteredFormattedText" class="whitespace-pre-wrap font-mono text-xs text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredFormattedText }}</pre>
+            <pre v-if="!isEmpty && liveValidation.valid && filteredFormattedText"
+              class="whitespace-pre-wrap font-mono text-xs text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredFormattedText }}</pre>
             <p v-else-if="(searchQuery || jmesQuery) && !filteredFormattedText" class="p-2 text-xs text-muted">
               No matching fields found.
             </p>
@@ -659,12 +561,10 @@ onMounted(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr v-for="(row, idx) in filteredTableData" :key="idx" class="border-b border-surface-hair/50 hover:bg-surface-hair/20">
-                    <td 
-                      v-for="header in tableHeaders" 
-                      :key="header" 
-                      class="px-2.5 py-1.5 border-r border-surface-hair/50 text-parchment/90 break-all whitespace-pre-wrap font-mono align-top"
-                    >
+                  <tr v-for="(row, idx) in filteredTableData" :key="idx"
+                    class="border-b border-surface-hair/50 hover:bg-surface-hair/20">
+                    <td v-for="header in tableHeaders" :key="header"
+                      class="px-2.5 py-1.5 border-r border-surface-hair/50 text-parchment/90 break-all whitespace-pre-wrap font-mono align-top">
                       {{ formatTableCellValue(row[header]) }}
                     </td>
                   </tr>
@@ -672,7 +572,8 @@ onMounted(() => {
               </table>
             </div>
             <p v-else class="p-2 text-xs text-muted">
-              {{ (searchQuery || jmesQuery) ? 'No matching fields found.' : (isEmpty ? t('tree.emptyState') : t('tree.fixError')) }}
+              {{ (searchQuery || jmesQuery) ? 'No matching fields found.' : (isEmpty ? t('tree.emptyState') :
+                t('tree.fixError')) }}
             </p>
           </template>
 
@@ -696,16 +597,11 @@ onMounted(() => {
 
     <!-- Toasts Notifications -->
     <div class="pointer-events-none fixed bottom-4 right-4 flex flex-col gap-2">
-      <div
-        v-for="toast in toasts"
-        :key="toast.id"
-        class="rounded border px-3 py-2 text-xs shadow-panel"
-        :class="{
-          'border-string/40 bg-string/10 text-string': toast.variant === 'success',
-          'border-boolean/40 bg-boolean/10 text-boolean': toast.variant === 'error',
-          'border-surface-hair bg-surface-raised text-parchment': toast.variant === 'info',
-        }"
-      >
+      <div v-for="toast in toasts" :key="toast.id" class="rounded border px-3 py-2 text-xs shadow-panel" :class="{
+        'border-string/40 bg-string/10 text-string': toast.variant === 'success',
+        'border-boolean/40 bg-boolean/10 text-boolean': toast.variant === 'error',
+        'border-surface-hair bg-surface-raised text-parchment': toast.variant === 'info',
+      }">
         {{ toast.text }}
       </div>
     </div>

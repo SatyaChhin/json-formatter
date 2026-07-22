@@ -2,7 +2,7 @@
 
 export const en = {
   'header.title': 'JSON Formatter',
-  'header.subtitle': 'Runs entirely in your browser — nothing is uploaded',
+  'header.subtitle': 'Runs entirely in your browser',
 
   'status.valid': 'Valid JSON',
   'status.invalid': 'Invalid JSON',
