@@ -371,15 +371,10 @@ onMounted(() => {
   initTheme()
   initLocale()
   document.addEventListener('fullscreenchange', handleFullscreenChange)
-
-  // Restore last saved JSON content from localStorage on first load
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       content.value = saved
-      if (format(saved)) {
-        content.value = state.value.formatted
-      }
     }
   } catch (err) {
     console.error('Failed to load JSON from localStorage:', err)
