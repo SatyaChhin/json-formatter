@@ -390,10 +390,6 @@ onUnmounted(() => {
   <div class="flex h-screen flex-col bg-ink text-parchment">
     <header class="flex items-center justify-between border-b border-surface-hair bg-surface px-5 py-3">
       <div class="flex items-center gap-3">
-        <span
-          class="flex h-10 w-10 items-center justify-center rounded bg-surface-raised border border-surface-hair overflow-hidden p-1">
-          <img src="public/npca_logo.png" alt="NPCA Logo" class="h-full w-full object-contain" />
-        </span>
         <span class="flex h-9 w-9 items-center justify-center rounded bg-key/15 border border-key/30">
           <Logo :size="22" />
         </span>
