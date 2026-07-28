@@ -250,11 +250,23 @@ function formatTableCellValue(val: unknown): string {
   return String(val)
 }
 
+const STORAGE_KEY = 'json-formatter:content'
+
 // Keep raw state in sync & reset tree clear when content changes
 watch(content, (next) => {
   state.value.raw = next
   if (isTreeCleared.value) {
     isTreeCleared.value = false
+  }
+
+  try {
+    if (next) {
+      localStorage.setItem(STORAGE_KEY, next)
+    } else {
+      localStorage.removeItem(STORAGE_KEY)
+    }
+  } catch (err) {
+    console.error('Failed to save JSON to localStorage:', err)
   }
 })
 
@@ -312,6 +324,11 @@ function handleSortToggle() {
 function handleClear() {
   content.value = ''
   clear()
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch (err) {
+    console.error('Failed to clear JSON from localStorage:', err)
+  }
 }
 
 /** Load Sample Data */
@@ -354,6 +371,19 @@ onMounted(() => {
   initTheme()
   initLocale()
   document.addEventListener('fullscreenchange', handleFullscreenChange)
+
+  // Restore last saved JSON content from localStorage on first load
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      content.value = saved
+      if (format(saved)) {
+        content.value = state.value.formatted
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load JSON from localStorage:', err)
+  }
 })
 
 onUnmounted(() => {
