@@ -1,5 +1,5 @@
 /* assets/css/main.css */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Fira+Code:wght@400;500;600&family=Source+Code+Pro:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -28,6 +28,14 @@
   --c-number-dim: 156 122 66;
   --c-boolean: 201 138 126;
   --c-boolean-dim: 150 96 84;
+
+  /* User-selectable font family + size — set via useFontSettings, read by
+     tailwind.config.ts's font-mono utility and by the Monaco editor (which
+     applies the same var through an inline style). Kept as plain :root
+     properties (not part of the theme-preset system above) since font
+     choice is a reading preference, independent of color theme/preset. */
+  --font-mono-active: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-size-content: 13px;
 }
 
 /* Light theme — same variable names, deepened values for AA contrast on paper */

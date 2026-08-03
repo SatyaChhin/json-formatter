@@ -47,7 +47,10 @@ export default <Partial<Config>>{
         },
       },
       fontFamily: {
-        mono: ['"IBM Plex Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        // Resolves through --font-mono-active (see assets/css/main.css /
+        // composables/useFontSettings.ts) so the user's font-family choice
+        // applies everywhere font-mono is used; falls back if unset.
+        mono: ['var(--font-mono-active)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
         sans: ['Manrope', '"Noto Sans Khmer"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         khmer: ['"Noto Sans Khmer"', 'Manrope', 'ui-sans-serif', 'sans-serif'],
       },

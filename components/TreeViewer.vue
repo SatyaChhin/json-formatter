@@ -117,14 +117,14 @@ function handleCopyPath(e?: Event) {
 <template>
   <div>
     <!-- Root Level Opening Bracket (Depth 0) -->
-    <div v-if="depth === 0" class="px-1 font-mono text-sm text-muted">
+    <div v-if="depth === 0" class="px-1 font-mono text-[length:var(--font-size-content)] text-muted">
       {{ valueType === 'array' ? '[' : '{' }}
     </div>
 
     <!-- Depth > 0 Nodes -->
     <div
       v-if="depth > 0"
-      class="group flex cursor-pointer items-start gap-1 rounded px-1 py-0.5 font-mono text-sm hover:bg-surface-hair/40"
+      class="group flex cursor-pointer items-start gap-1 rounded px-1 py-0.5 font-mono text-[length:var(--font-size-content)] hover:bg-surface-hair/40"
       :class="{ 'cursor-default': !isContainer }"
       @click="isContainer && (expanded = !expanded)"
     >
@@ -190,13 +190,13 @@ function handleCopyPath(e?: Event) {
     <!-- Closing Bracket for Child Containers -->
     <div 
       v-if="depth > 0 && isContainer && entries.length > 0 && expanded" 
-      class="ml-4 px-1 font-mono text-sm text-muted"
+      class="ml-4 px-1 font-mono text-[length:var(--font-size-content)] text-muted"
     >
       {{ valueType === 'array' ? ']' : '}' }}<span v-if="!isLast">,</span>
     </div>
 
     <!-- Root Level Closing Bracket (Depth 0) -->
-    <div v-if="depth === 0" class="px-1 font-mono text-sm text-muted">
+    <div v-if="depth === 0" class="px-1 font-mono text-[length:var(--font-size-content)] text-muted">
       {{ valueType === 'array' ? ']' : '}' }}
     </div>
   </div>

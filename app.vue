@@ -4,6 +4,7 @@ import jmespath from 'jmespath'
 import {
   CheckCircle2,
   XCircle,
+  Flower,
   Sun,
   Moon,
   FolderTree,
@@ -31,18 +32,21 @@ import {
   GitCompare,
   WandSparkles,
   Ellipsis,
+  Plus,
+  Minus,
 } from 'lucide-vue-next'
 import { useJsonFormatter } from '~/composables/useJsonFormatter'
 import { useClipboard } from '~/composables/useClipboard'
 import { useLocale } from '~/composables/useLocale'
 import { useTheme } from '~/composables/useTheme'
+import { useFontSettings } from '~/composables/useFontSettings'
 import { useHistory } from '~/composables/useHistory'
 import { sampleDatasets } from '~/utils/sampleData'
 import { jsonToYaml, rowsToCsv } from '~/utils/convert'
 import { encodeShareHash, decodeShareHash } from '~/utils/share'
-import { localeOptions, themePresetOptions } from '~/types/i18n'
+import { localeOptions, themePresetOptions, fontFamilyOptions, FONT_SIZE_MIN, FONT_SIZE_MAX } from '~/types/i18n'
 import type { IndentSize, SampleDataset } from '~/types/json'
-import type { Locale } from '~/types/i18n'
+import type { Locale, FontFamily } from '~/types/i18n'
 
 // View mode type definition
 type ViewMode = 'tree' | 'text' | 'table' | 'code' | 'yaml' | 'csv' | 'schema'
@@ -62,6 +66,7 @@ const { state, options, validate, format, minify, setIndentSize, toggleSortKeys,
 const { toasts, copyToClipboard, downloadJson, pushToast } = useClipboard()
 const { locale, t, setLocale, initLocale } = useLocale()
 const { theme, preset, setTheme, setPreset, initTheme } = useTheme()
+const { fontFamily, fontSize, setFontFamily, setFontSize, initFontSettings } = useFontSettings()
 const themeMenuOpen = ref(false)
 const { entries: historyEntries, initHistory, save: saveHistory, remove: removeHistoryEntry, clear: clearHistory } = useHistory()
 
@@ -537,6 +542,7 @@ async function handleShare() {
 
 onMounted(async () => {
   initTheme()
+  initFontSettings()
   initLocale()
   initHistory()
   document.addEventListener('fullscreenchange', handleFullscreenChange)
@@ -605,8 +611,7 @@ onUnmounted(() => {
           <button type="button"
             class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="Theme" aria-label="Theme" :aria-expanded="themeMenuOpen" @click="themeMenuOpen = !themeMenuOpen">
-            <Sun v-if="theme === 'dark'" class="h-4 w-4" aria-hidden="true" />
-            <Moon v-else class="h-4 w-4" aria-hidden="true" />
+            <Flower class="h-4 w-4" aria-hidden="true" />
           </button>
           <div v-if="themeMenuOpen"
             class="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel font-mono">
@@ -634,6 +639,34 @@ onUnmounted(() => {
                 {{ opt.label }}
                 <Check v-if="preset === opt.id" class="ml-auto h-3.5 w-3.5 text-key" aria-hidden="true" />
               </button>
+            </div>
+            <div class="border-t border-surface-hair p-1">
+              <p class="px-2 py-1 text-[10.5px] uppercase tracking-wide text-muted">Font</p>
+              <div class="px-2 pb-1.5">
+                <select
+                  class="w-full rounded border border-surface-hair bg-surface px-2 py-1 text-xs text-parchment focus:border-key/50 focus:outline-none"
+                  :value="fontFamily"
+                  aria-label="Font family"
+                  @change="setFontFamily(($event.target as HTMLSelectElement).value as FontFamily)">
+                  <option v-for="opt in fontFamilyOptions" :key="opt.id" :value="opt.id">{{ opt.label }}</option>
+                </select>
+              </div>
+              <div class="flex items-center justify-between px-2 pb-1.5">
+                <span class="text-xs text-muted">Size</span>
+                <div class="flex items-center gap-1">
+                  <button type="button"
+                    class="flex h-6 w-6 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key disabled:cursor-not-allowed disabled:opacity-30"
+                    :disabled="fontSize <= FONT_SIZE_MIN" aria-label="Decrease font size" @click="setFontSize(fontSize - 1)">
+                    <Minus class="h-3 w-3" aria-hidden="true" />
+                  </button>
+                  <span class="w-9 text-center font-mono text-xs text-parchment">{{ fontSize }}px</span>
+                  <button type="button"
+                    class="flex h-6 w-6 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key disabled:cursor-not-allowed disabled:opacity-30"
+                    :disabled="fontSize >= FONT_SIZE_MAX" aria-label="Increase font size" @click="setFontSize(fontSize + 1)">
+                    <Plus class="h-3 w-3" aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -892,7 +925,7 @@ onUnmounted(() => {
           <!-- 2. Formatted Raw Text View -->
           <template v-else-if="viewMode === 'text'">
             <pre v-if="!isEmpty && liveValidation.valid && filteredFormattedText"
-              class="whitespace-pre-wrap font-mono text-xs text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredFormattedText }}</pre>
+              class="whitespace-pre-wrap font-mono text-[length:var(--font-size-content)] text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredFormattedText }}</pre>
             <p v-else-if="(searchQuery || jmesQuery) && !filteredFormattedText" class="p-2 text-xs text-muted">
               No matching fields found.
             </p>
@@ -904,7 +937,7 @@ onUnmounted(() => {
           <!-- 3. Dynamic Table View with Search/Filter -->
           <template v-else-if="viewMode === 'table'">
             <div v-if="!isEmpty && liveValidation.valid && filteredTableData.length > 0" class="overflow-x-auto p-1">
-              <table class="w-full text-left font-mono text-xs border-collapse border border-surface-hair">
+              <table class="w-full text-left font-mono text-[length:var(--font-size-content)] border-collapse border border-surface-hair">
                 <thead>
                   <tr class="bg-surface-raised border-b border-surface-hair text-muted uppercase text-[10px]">
                     <th v-for="header in tableHeaders" :key="header" class="px-2.5 py-1.5 border-r border-surface-hair">
@@ -947,7 +980,7 @@ onUnmounted(() => {
           <!-- 5. YAML Export View -->
           <template v-else-if="viewMode === 'yaml'">
             <pre v-if="!isEmpty && liveValidation.valid && filteredYamlText"
-              class="whitespace-pre-wrap font-mono text-xs text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredYamlText }}</pre>
+              class="whitespace-pre-wrap font-mono text-[length:var(--font-size-content)] text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredYamlText }}</pre>
             <p v-else-if="(searchQuery || jmesQuery) && !filteredYamlText" class="p-2 text-xs text-muted">
               No matching fields found.
             </p>
@@ -959,7 +992,7 @@ onUnmounted(() => {
           <!-- 6. CSV Export View (tabular data only) -->
           <template v-else-if="viewMode === 'csv'">
             <pre v-if="!isEmpty && liveValidation.valid && filteredCsvText"
-              class="whitespace-pre-wrap font-mono text-xs text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredCsvText }}</pre>
+              class="whitespace-pre-wrap font-mono text-[length:var(--font-size-content)] text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredCsvText }}</pre>
             <p v-else-if="!isEmpty && liveValidation.valid" class="p-2 text-xs text-muted">
               Top-level value must be an object or array to export as CSV.
             </p>

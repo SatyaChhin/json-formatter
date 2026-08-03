@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import loader from '@monaco-editor/loader'
 import type * as Monaco from 'monaco-editor'
 import { useTheme } from '~/composables/useTheme'
+import { useFontSettings } from '~/composables/useFontSettings'
 
 const props = withDefaults(
   defineProps<{
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 }>()
 
 const { theme } = useTheme()
+const { fontFamilyStack, fontSize } = useFontSettings()
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const editorRef = shallowRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -99,9 +101,9 @@ onMounted(async () => {
     theme: themeName(theme.value),
     automaticLayout: false, // we drive layout via ResizeObserver instead
     minimap: { enabled: false },
-    fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
-    fontSize: 13,
-    lineHeight: 20,
+    fontFamily: fontFamilyStack.value,
+    fontSize: fontSize.value,
+    lineHeight: Math.round(fontSize.value * 1.55),
     padding: { top: 12, bottom: 12 },
     readOnly: props.readOnly,
     scrollBeyondLastLine: false,
@@ -146,6 +148,17 @@ watch(
 // the app-wide light/dark toggle changes.
 watch(theme, (next) => {
   monacoApi?.editor.setTheme(themeName(next))
+})
+
+// Monaco caches glyph-width measurements from the options it was given, so
+// font family/size changes must go through updateOptions to re-measure —
+// just relying on inherited CSS wouldn't reflow the gutter/wrapping.
+watch(fontFamilyStack, (next) => {
+  editorRef.value?.updateOptions({ fontFamily: next })
+})
+
+watch(fontSize, (next) => {
+  editorRef.value?.updateOptions({ fontSize: next, lineHeight: Math.round(next * 1.55) })
 })
 
 onBeforeUnmount(() => {
