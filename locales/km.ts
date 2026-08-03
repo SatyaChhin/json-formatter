@@ -17,6 +17,8 @@ export const km = {
   'toolbar.clear': 'សម្អាត',
   'toolbar.treeView': 'ទិដ្ឋភាពមែកធាង',
   'toolbar.clearall': 'Clear all',
+  'toolbar.escape': 'គេចអក្សរ',
+  'toolbar.unescape': 'ដកការគេចអក្សរ',
 
   'editor.label': 'កម្មវិធីនិពន្ធ',
   'editor.loading': 'កំពុងផ្ទុកកម្មវិធីនិពន្ធ…',

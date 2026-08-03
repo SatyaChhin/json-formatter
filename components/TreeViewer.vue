@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { ChevronRight } from 'lucide-vue-next'
+import { ChevronRight, Link } from 'lucide-vue-next'
 import type { JsonValueType } from '~/types/json'
 
 defineOptions({ name: 'TreeViewer' })
@@ -20,7 +20,13 @@ const emit = defineEmits<{
   copy: [jsonString?: string]
   download: [jsonString?: string]
   sort: []
+  'copy-path': [path: string]
 }>()
+
+/** Builds a child's JSONPath, using bracket notation for array indices */
+function childPath(key: string | number): string {
+  return typeof key === 'number' ? `${props.path}[${key}]` : `${props.path}.${key}`
+}
 
 function typeOf(val: unknown): JsonValueType {
   if (val === null) return 'null'
@@ -44,7 +50,16 @@ const entries = computed<[string | number, unknown][]>(() => {
   return Object.entries(props.value as Record<string, unknown>)
 })
 
-const expanded = ref(true)
+/**
+ * Containers with more entries than this start collapsed, since expanding
+ * them recursively instantiates one TreeViewer per entry — an uncollapsed
+ * node with thousands of items is what actually makes the tree slow, not
+ * the JSON size itself.
+ */
+const AUTO_COLLAPSE_THRESHOLD = 50
+// depth 0 has no toggle affordance of its own (no clickable header row), so
+// it must never start collapsed or its contents would be unreachable.
+const expanded = ref(props.depth === 0 || entries.value.length <= AUTO_COLLAPSE_THRESHOLD)
 const isArrayItem = computed(() => typeof props.nodeKey === 'number')
 
 const previewClass = computed(() => {
@@ -92,6 +107,11 @@ function handleNodeDownload(e?: Event) {
   const formatted = getFormattedJson()
   emit('download', formatted)
 }
+
+function handleCopyPath(e?: Event) {
+  if (e) e.stopPropagation()
+  emit('copy-path', props.path)
+}
 </script>
 
 <template>
@@ -117,7 +137,7 @@ function handleNodeDownload(e?: Event) {
       <span v-else class="w-3.5 shrink-0" />
 
       <!-- Key Name -->
-      <span v-if="nodeKey !== null && !isArrayItem" class="shrink-0 text-key">
+      <span v-if="nodeKey !== null && !isArrayItem" class="shrink-0 text-datakey">
         "{{ nodeKey }}":
       </span>
 
@@ -128,13 +148,23 @@ function handleNodeDownload(e?: Event) {
 
       <!-- Opening Bracket for Container -->
       <span v-else-if="isContainer" class="text-muted">
-        {{ valueType === 'array' ? '[' : '{' }}
+        {{ valueType === 'array' ? '[' : '{' }}<template v-if="!expanded"><span class="mx-1 text-muted/70">{{ entries.length }} {{ entries.length === 1 ? 'item' : 'items' }}</span>{{ valueType === 'array' ? ']' : '}' }}<span v-if="!isLast">,</span></template>
       </span>
 
       <!-- Primitive Value -->
       <span v-else class="break-all" :class="previewClass">
         {{ previewText }}<span v-if="!isLast" class="text-muted">,</span>
       </span>
+
+      <!-- Copy Path (visible on row hover) -->
+      <button
+        type="button"
+        class="ml-auto hidden shrink-0 rounded p-0.5 text-muted opacity-0 transition hover:text-key group-hover:block group-hover:opacity-100"
+        title="Copy path"
+        @click="handleCopyPath"
+      >
+        <Link class="h-3 w-3" aria-hidden="true" />
+      </button>
     </div>
 
     <!-- Recursive Children -->
@@ -147,12 +177,13 @@ function handleNodeDownload(e?: Event) {
         :key="k"
         :node-key="k"
         :value="v"
-        :path="`${path}.${k}`"
+        :path="childPath(k)"
         :depth="depth + 1"
         :is-last="index === entries.length - 1"
         @copy="(val) => emit('copy', val)"
         @download="(val) => emit('download', val)"
         @sort="emit('sort')"
+        @copy-path="(p) => emit('copy-path', p)"
       />
     </div>
 

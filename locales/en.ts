@@ -16,6 +16,8 @@ export const en = {
   'toolbar.clear': 'Clear',
   'toolbar.treeView': 'Tree view',
   'toolbar.clearall': 'Clear all',
+  'toolbar.escape': 'Escape',
+  'toolbar.unescape': 'Unescape',
 
 
   'editor.label': 'Editor',

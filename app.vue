@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, watch, onMounted, onUnmounted, type Component } from 'vue'
 import jmespath from 'jmespath'
 import {
   CheckCircle2,
@@ -20,25 +20,50 @@ import {
   Code,
   Upload,
   Maximize2,
-  Minimize2
+  Minimize2,
+  FileType2,
+  FileSpreadsheet,
+  Share,
+  ShieldCheck,
+  Bookmark,
+  History,
+  Trash,
+  GitCompare,
+  WandSparkles,
+  Ellipsis,
 } from 'lucide-vue-next'
 import { useJsonFormatter } from '~/composables/useJsonFormatter'
 import { useClipboard } from '~/composables/useClipboard'
 import { useLocale } from '~/composables/useLocale'
 import { useTheme } from '~/composables/useTheme'
+import { useHistory } from '~/composables/useHistory'
 import { sampleDatasets } from '~/utils/sampleData'
-import { localeOptions } from '~/types/i18n'
+import { jsonToYaml, rowsToCsv } from '~/utils/convert'
+import { encodeShareHash, decodeShareHash } from '~/utils/share'
+import { localeOptions, themePresetOptions } from '~/types/i18n'
 import type { IndentSize, SampleDataset } from '~/types/json'
 import type { Locale } from '~/types/i18n'
 
 // View mode type definition
-type ViewMode = 'tree' | 'text' | 'table' | 'code'
+type ViewMode = 'tree' | 'text' | 'table' | 'code' | 'yaml' | 'csv' | 'schema'
+
+const viewTabs: { id: ViewMode; label: string; icon: Component }[] = [
+  { id: 'tree', label: 'Tree', icon: FolderTree },
+  { id: 'text', label: 'Text', icon: FileText },
+  { id: 'table', label: 'Table', icon: Table },
+  { id: 'code', label: 'Code', icon: Code2 },
+  { id: 'yaml', label: 'Yaml', icon: FileType2 },
+  { id: 'csv', label: 'Csv', icon: FileSpreadsheet },
+  { id: 'schema', label: 'Schema', icon: ShieldCheck },
+]
 
 const { state, options, validate, format, minify, setIndentSize, toggleSortKeys, clear, loadSample, canDownload } =
   useJsonFormatter()
-const { toasts, copyToClipboard, downloadJson } = useClipboard()
+const { toasts, copyToClipboard, downloadJson, pushToast } = useClipboard()
 const { locale, t, setLocale, initLocale } = useLocale()
-const { theme, toggleTheme, initTheme } = useTheme()
+const { theme, preset, setTheme, setPreset, initTheme } = useTheme()
+const themeMenuOpen = ref(false)
+const { entries: historyEntries, initHistory, save: saveHistory, remove: removeHistoryEntry, clear: clearHistory } = useHistory()
 
 // Editor state content, view mode & search query
 const content = ref('')
@@ -50,6 +75,7 @@ const jmesError = ref<string | null>(null)
 const isTreeCleared = ref(false)
 const treeCopied = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const diffFileInputRef = ref<HTMLInputElement | null>(null)
 
 // Fullscreen state
 const isFullscreen = ref(false)
@@ -101,11 +127,7 @@ function triggerFileUpload() {
   fileInputRef.value?.click()
 }
 
-function handleFileChange(event: Event) {
-  const target = event.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
-
+function loadFile(file: File) {
   const reader = new FileReader()
   reader.onload = (e) => {
     const text = e.target?.result as string
@@ -115,10 +137,37 @@ function handleFileChange(event: Event) {
         content.value = state.value.formatted
       }
     }
-    // Reset file input value so the same file can be uploaded again if needed
-    if (target) target.value = ''
   }
   reader.readAsText(file)
+}
+
+function handleFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) loadFile(file)
+  // Reset file input value so the same file can be uploaded again if needed
+  if (target) target.value = ''
+}
+
+const isDraggingFile = ref(false)
+let dragDepth = 0
+
+function handleDragEnter(event: DragEvent) {
+  if (!event.dataTransfer?.types.includes('Files')) return
+  dragDepth++
+  isDraggingFile.value = true
+}
+
+function handleDragLeave() {
+  dragDepth = Math.max(0, dragDepth - 1)
+  if (dragDepth === 0) isDraggingFile.value = false
+}
+
+function handleDrop(event: DragEvent) {
+  dragDepth = 0
+  isDraggingFile.value = false
+  const file = event.dataTransfer?.files?.[0]
+  if (file) loadFile(file)
 }
 
 // Live validation on every keystroke
@@ -290,6 +339,24 @@ const filteredFormattedText = computed(() => {
   return getFormattedText(filteredParsedData.value)
 })
 
+// YAML export text, derived from whatever the tree/search/JMESPath filters produced
+const filteredYamlText = computed(() => {
+  const data = filteredParsedData.value !== undefined ? filteredParsedData.value : parsedForTree.value
+  if (data === undefined) return ''
+  try {
+    return jsonToYaml(data)
+  } catch {
+    return ''
+  }
+})
+
+// CSV export text, reusing the same row/header shaping as the Table view
+const filteredCsvText = computed(() => {
+  const rows = filteredTableData.value
+  if (!rows.length) return ''
+  return rowsToCsv(tableHeaders.value, rows)
+})
+
 /** 1. Format Code in Editor & View */
 function runFormat() {
   if (format(content.value)) {
@@ -320,6 +387,27 @@ function handleSortToggle() {
   }
 }
 
+/** Wraps the current editor text as a JSON-escaped string literal (for embedding JSON inside another string/log line) */
+function handleEscape() {
+  if (!content.value) return
+  content.value = JSON.stringify(content.value)
+}
+
+/** Unwraps a JSON string literal back into raw text (e.g. JSON pasted from inside a log line) */
+function handleUnescape() {
+  if (!content.value) return
+  try {
+    const parsed = JSON.parse(content.value)
+    if (typeof parsed === 'string') {
+      content.value = parsed
+    } else {
+      pushToast('Content is not an escaped JSON string', 'info')
+    }
+  } catch {
+    pushToast('Content is not a valid escaped JSON string', 'error')
+  }
+}
+
 /** 5. Clear Data */
 function handleClear() {
   content.value = ''
@@ -337,9 +425,21 @@ function handleLoadSample(sample: SampleDataset) {
   content.value = state.value.formatted || sample.json
 }
 
+/** Text + suggested filename for whatever the active view tab is currently showing */
+function activeViewExport(): { text: string; filename: string } {
+  switch (viewMode.value) {
+    case 'yaml':
+      return { text: filteredYamlText.value, filename: 'data.yaml' }
+    case 'csv':
+      return { text: filteredCsvText.value, filename: 'data.csv' }
+    default:
+      return { text: filteredFormattedText.value, filename: 'data.json' }
+  }
+}
+
 /** 6. Copy Code */
 function handleCopy(payload?: string) {
-  const textToCopy = (typeof payload === 'string' && payload) ? payload : filteredFormattedText.value
+  const textToCopy = (typeof payload === 'string' && payload) ? payload : activeViewExport().text
   if (!textToCopy) return
 
   copyToClipboard(textToCopy)
@@ -351,10 +451,11 @@ function handleCopy(payload?: string) {
 
 /** 7. Download JSON Data */
 function handleDownload(payload?: string) {
-  const textToDownload = (typeof payload === 'string' && payload) ? payload : filteredFormattedText.value
+  const target = activeViewExport()
+  const textToDownload = (typeof payload === 'string' && payload) ? payload : target.text
   if (!textToDownload) return
 
-  downloadJson(textToDownload, 'data.json')
+  downloadJson(textToDownload, target.filename)
 }
 
 function handleClearTreeOnly() {
@@ -367,17 +468,98 @@ function handleLocaleSelect(next: Locale) {
   setLocale(next)
 }
 
-onMounted(() => {
+const isSharing = ref(false)
+const historyMenuOpen = ref(false)
+const moreMenuOpen = ref(false)
+
+// Diff mode: compares the current document against a second, pasted-in JSON doc
+const isDiffMode = ref(false)
+const diffCompareText = ref('')
+
+function handleDiffFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      diffCompareText.value = (e.target?.result as string) ?? ''
+    }
+    reader.readAsText(file)
+  }
+  if (target) target.value = ''
+}
+
+function formatDiffCompareText() {
+  try {
+    const parsed = JSON.parse(diffCompareText.value)
+    diffCompareText.value = JSON.stringify(parsed, null, options.value.indentSize)
+  } catch {
+    pushToast('Right-hand document is not valid JSON', 'error')
+  }
+}
+
+function handleSaveToHistory() {
+  if (!content.value.trim()) return
+  saveHistory(content.value)
+  pushToast('Saved to history', 'success')
+}
+
+function handleRestoreHistory(entryContent: string) {
+  content.value = entryContent
+  if (format(entryContent)) {
+    content.value = state.value.formatted
+  }
+  historyMenuOpen.value = false
+}
+
+function formatHistoryTime(savedAt: number): string {
+  return new Date(savedAt).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+/** Compresses the current document into the URL hash and copies a shareable link */
+async function handleShare() {
+  if (!content.value.trim() || isSharing.value) return
+  isSharing.value = true
+  try {
+    const token = await encodeShareHash(content.value)
+    const url = `${location.origin}${location.pathname}#${token}`
+    history.replaceState(null, '', `#${token}`)
+    await copyToClipboard(url)
+  } finally {
+    isSharing.value = false
+  }
+}
+
+onMounted(async () => {
   initTheme()
   initLocale()
+  initHistory()
   document.addEventListener('fullscreenchange', handleFullscreenChange)
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      content.value = saved
+
+  // A share link in the URL hash takes priority over the last locally saved document
+  let loadedFromShare = false
+  if (location.hash) {
+    const shared = await decodeShareHash(location.hash)
+    if (shared !== null) {
+      content.value = shared
+      loadedFromShare = true
     }
-  } catch (err) {
-    console.error('Failed to load JSON from localStorage:', err)
+  }
+
+  if (!loadedFromShare) {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        content.value = saved
+      }
+    } catch (err) {
+      console.error('Failed to load JSON from localStorage:', err)
+    }
   }
 })
 
@@ -394,18 +576,18 @@ onUnmounted(() => {
           <Logo :size="22" />
         </span>
         <div class="leading-tight">
-          <h1 class="text-sm font-semibold text-parchment">{{ t('header.title') }}</h1>
+          <h1 class="font-mono text-sm font-bold uppercase tracking-wide text-parchment">{{ t('header.title') }}</h1>
           <p class="text-xs text-muted">{{ t('header.subtitle') }}</p>
         </div>
       </div>
       <div class="flex items-center gap-3">
         <div class="flex items-center gap-2 text-xs">
           <template v-if="!isEmpty">
-            <span v-if="liveValidation.valid" class="flex items-center gap-1.5 text-string">
+            <span v-if="liveValidation.valid" class="flex items-center gap-1.5 font-mono uppercase tracking-wide text-string">
               <CheckCircle2 class="h-4 w-4" aria-hidden="true" />
               {{ t('status.valid') }}
             </span>
-            <span v-else class="flex items-center gap-1.5 text-boolean">
+            <span v-else class="flex items-center gap-1.5 font-mono uppercase tracking-wide text-boolean">
               <XCircle class="h-4 w-4" aria-hidden="true" />
               {{ t('status.invalid') }}
             </span>
@@ -419,36 +601,167 @@ onUnmounted(() => {
             {{ opt.code.toUpperCase() }}
           </button>
         </div>
+        <div class="relative">
+          <button type="button"
+            class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+            title="Theme" aria-label="Theme" :aria-expanded="themeMenuOpen" @click="themeMenuOpen = !themeMenuOpen">
+            <Sun v-if="theme === 'dark'" class="h-4 w-4" aria-hidden="true" />
+            <Moon v-else class="h-4 w-4" aria-hidden="true" />
+          </button>
+          <div v-if="themeMenuOpen"
+            class="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel font-mono">
+            <div class="flex items-center justify-between border-b border-surface-hair px-3 py-2">
+              <span class="text-[10.5px] uppercase tracking-wide text-muted">Mode</span>
+              <div class="flex items-center rounded border border-surface-hair p-0.5 text-xs">
+                <button type="button" class="flex items-center gap-1 rounded px-2 py-1 transition"
+                  :class="theme === 'dark' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
+                  :aria-pressed="theme === 'dark'" @click="setTheme('dark')">
+                  <Moon class="h-3 w-3" aria-hidden="true" />
+                </button>
+                <button type="button" class="flex items-center gap-1 rounded px-2 py-1 transition"
+                  :class="theme === 'light' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
+                  :aria-pressed="theme === 'light'" @click="setTheme('light')">
+                  <Sun class="h-3 w-3" aria-hidden="true" />
+                </button>
+              </div>
+            </div>
+            <div class="p-1">
+              <p class="px-2 py-1 text-[10.5px] uppercase tracking-wide text-muted">Theme</p>
+              <button v-for="opt in themePresetOptions" :key="opt.id" type="button"
+                class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
+                :aria-pressed="preset === opt.id" @click="setPreset(opt.id)">
+                <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ background: opt.swatch }" aria-hidden="true" />
+                {{ opt.label }}
+                <Check v-if="preset === opt.id" class="ml-auto h-3.5 w-3.5 text-key" aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
         <button type="button"
-          class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
-          :title="theme === 'dark' ? t('theme.toLight') : t('theme.toDark')"
-          :aria-label="theme === 'dark' ? t('theme.toLight') : t('theme.toDark')" @click="toggleTheme">
-          <Sun v-if="theme === 'dark'" class="h-4 w-4" aria-hidden="true" />
-          <Moon v-else class="h-4 w-4" aria-hidden="true" />
+          class="flex h-8 w-8 items-center justify-center rounded border transition"
+          :class="isDiffMode ? 'border-key/50 bg-key/20 text-key' : 'border-surface-hair text-parchment hover:border-key/50 hover:text-key'"
+          title="Compare two JSON documents" aria-label="Compare two JSON documents" :aria-pressed="isDiffMode"
+          @click="isDiffMode = !isDiffMode">
+          <GitCompare class="h-4 w-4" aria-hidden="true" />
         </button>
-        <button type="button"
-          class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
-          :title="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'"
-          :aria-label="isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'" @click="toggleFullscreen">
-          <Minimize2 v-if="isFullscreen" class="h-4 w-4" aria-hidden="true" />
-          <Maximize2 v-else class="h-4 w-4" aria-hidden="true" />
-        </button>
+        <div class="relative">
+          <button type="button"
+            class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+            title="Document history" aria-label="Document history" :aria-expanded="historyMenuOpen"
+            @click="historyMenuOpen = !historyMenuOpen">
+            <History class="h-4 w-4" aria-hidden="true" />
+          </button>
+          <div v-if="historyMenuOpen"
+            class="absolute right-0 top-full z-20 mt-1 w-80 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel">
+            <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
+              <span class="font-mono text-[11px] uppercase tracking-wide text-muted">History</span>
+              <button v-if="historyEntries.length" type="button"
+                class="flex items-center gap-1 text-[11px] text-muted transition hover:text-boolean"
+                @click="clearHistory">
+                <Trash class="h-3 w-3" aria-hidden="true" />
+                Clear
+              </button>
+            </div>
+            <ul class="max-h-72 overflow-auto">
+              <li v-if="!historyEntries.length" class="px-3 py-3 text-xs text-muted">
+                No saved documents yet — use "Save to history" in the More menu.
+              </li>
+              <li v-for="entry in historyEntries" :key="entry.id"
+                class="group flex items-start gap-2 border-b border-surface-hair/50 px-3 py-2 last:border-b-0 hover:bg-key/10">
+                <button type="button" class="min-w-0 flex-1 text-left" @click="handleRestoreHistory(entry.content)">
+                  <p class="truncate font-mono text-xs text-parchment">{{ entry.preview }}</p>
+                  <p class="text-[10px] text-muted">{{ formatHistoryTime(entry.savedAt) }}</p>
+                </button>
+                <button type="button"
+                  class="mt-0.5 shrink-0 rounded p-0.5 text-muted opacity-0 transition hover:text-boolean group-hover:opacity-100"
+                  title="Remove" @click="removeHistoryEntry(entry.id)">
+                  <Trash class="h-3.5 w-3.5" aria-hidden="true" />
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <div class="relative">
+          <button type="button"
+            class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+            title="More" aria-label="More options" :aria-expanded="moreMenuOpen" @click="moreMenuOpen = !moreMenuOpen">
+            <Ellipsis class="h-4 w-4" aria-hidden="true" />
+          </button>
+          <div v-if="moreMenuOpen"
+            class="absolute right-0 top-full z-20 mt-1 w-56 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel font-mono">
+            <button type="button"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
+              @click="toggleFullscreen(); moreMenuOpen = false">
+              <Minimize2 v-if="isFullscreen" class="h-3.5 w-3.5" aria-hidden="true" />
+              <Maximize2 v-else class="h-3.5 w-3.5" aria-hidden="true" />
+              {{ isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen' }}
+            </button>
+            <button type="button"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition enabled:hover:bg-key/10 enabled:hover:text-key disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="isEmpty || isSharing" @click="handleShare(); moreMenuOpen = false">
+              <Share class="h-3.5 w-3.5" aria-hidden="true" />
+              Copy shareable link
+            </button>
+            <button type="button"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition enabled:hover:bg-key/10 enabled:hover:text-key disabled:cursor-not-allowed disabled:opacity-40"
+              :disabled="isEmpty" @click="handleSaveToHistory(); moreMenuOpen = false">
+              <Bookmark class="h-3.5 w-3.5" aria-hidden="true" />
+              Save to history
+            </button>
+          </div>
+        </div>
       </div>
     </header>
     <Toolbar :indent-size="options.indentSize" :sort-keys="options.sortKeys ?? false" :show-tree="showTree"
       :can-download="canDownload || (!isEmpty && liveValidation.valid)" :samples="sampleDatasets" @format="runFormat"
       @minify="runMinify" @clear="handleClear" @copy="handleCopy()" @download="handleDownload()"
       @load-sample="handleLoadSample" @toggle-tree="showTree = !showTree" @toggle-sort="handleSortToggle"
-      @update:indent-size="handleIndentChange" />
+      @update:indent-size="handleIndentChange" @escape="handleEscape" @unescape="handleUnescape" />
 
     <div v-if="!isEmpty && !liveValidation.valid && liveValidation.error" class="px-4 pt-3">
       <ErrorBanner :error="liveValidation.error" />
     </div>
 
-    <main class="flex min-h-0 flex-1 gap-0 p-4 select-none">
+    <main v-if="isDiffMode" class="flex min-h-0 flex-1 flex-col gap-2 p-4">
+      <div class="flex items-center justify-between rounded-lg border border-surface-hair bg-surface px-3 py-2">
+        <div class="flex items-center gap-4 font-mono text-[11px] uppercase tracking-wide text-muted">
+          <span>Left: current document</span>
+          <span>Right: paste or upload a document to compare</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <input ref="diffFileInputRef" type="file" accept=".json,.txt" class="hidden" @change="handleDiffFileChange" />
+          <button type="button"
+            class="flex items-center gap-1 rounded border border-surface-hair px-2 py-1 text-xs text-parchment transition hover:border-key/50 hover:text-key"
+            @click="diffFileInputRef?.click()">
+            <Upload class="h-3.5 w-3.5" aria-hidden="true" />
+            Upload right side
+          </button>
+          <button type="button"
+            class="flex items-center gap-1 rounded border border-surface-hair px-2 py-1 text-xs text-parchment transition hover:border-key/50 hover:text-key"
+            @click="formatDiffCompareText">
+            <WandSparkles class="h-3.5 w-3.5" aria-hidden="true" />
+            Format right side
+          </button>
+        </div>
+      </div>
+      <section class="min-h-0 flex-1 overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel">
+        <ClientOnly>
+          <DiffViewer :original="content" v-model:modified="diffCompareText" />
+          <template #fallback>
+            <div class="flex h-full items-center justify-center text-xs text-muted">
+              {{ t('editor.loading') }}
+            </div>
+          </template>
+        </ClientOnly>
+      </section>
+    </main>
+
+    <main v-else class="flex min-h-0 flex-1 gap-0 p-4 select-none">
       <section
-        class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
-        :style="showTree ? `flex-basis: ${leftPanelWidth}%` : 'flex-basis: 100%'">
+        class="relative flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
+        :style="showTree ? `flex-basis: ${leftPanelWidth}%` : 'flex-basis: 100%'"
+        @dragenter.prevent="handleDragEnter" @dragover.prevent @dragleave.prevent="handleDragLeave"
+        @drop.prevent="handleDrop">
         <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
           <span class="text-[11px] uppercase tracking-wide text-muted">{{ t('editor.label') }}</span>
           <div>
@@ -471,6 +784,13 @@ onUnmounted(() => {
             </template>
           </ClientOnly>
         </div>
+        <div v-if="isDraggingFile"
+          class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center border-2 border-dashed border-key bg-ink/80">
+          <span class="flex items-center gap-2 text-sm font-medium text-key">
+            <Upload class="h-4 w-4" aria-hidden="true" />
+            Drop JSON file to load
+          </span>
+        </div>
       </section>
       <div v-if="showTree" class="w-3 flex items-center justify-center cursor-col-resize group px-0.5"
         @mousedown="startResize">
@@ -480,37 +800,17 @@ onUnmounted(() => {
         class="flex min-h-0 flex-col overflow-hidden rounded-lg border border-surface-hair bg-surface shadow-panel"
         :style="`flex-basis: ${100 - leftPanelWidth}%`">
         <div class="flex flex-col border-b border-surface-hair">
+          <!-- Folder-tab view switcher -->
+          <div class="flex items-end gap-0.5 overflow-x-auto bg-surface-raised px-2 pt-2">
+            <button v-for="tab in viewTabs" :key="tab.id" type="button"
+              class="flex shrink-0 items-center gap-1.5 px-3 pb-2 pt-1.5 font-mono text-[10.5px] uppercase tracking-wide transition [clip-path:polygon(10%_0,90%_0,100%_100%,0%_100%)]"
+              :class="viewMode === tab.id ? 'bg-surface font-bold text-key' : 'bg-surface-raised text-muted hover:text-parchment'"
+              :aria-pressed="viewMode === tab.id" @click="viewMode = tab.id">
+              <component :is="tab.icon" class="h-3 w-3" aria-hidden="true" />
+              {{ tab.label }}
+            </button>
+          </div>
           <div class="flex items-center justify-between gap-2 px-3 py-1.5">
-            <div class="flex items-center gap-1 shrink-0 rounded bg-surface-raised p-0.5 text-xs">
-              <button type="button"
-                class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
-                :class="viewMode === 'tree' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
-                @click="viewMode = 'tree'">
-                <FolderTree class="h-3 w-3" />
-                Tree
-              </button>
-              <button type="button"
-                class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
-                :class="viewMode === 'text' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
-                @click="viewMode = 'text'">
-                <FileText class="h-3 w-3" />
-                Text
-              </button>
-              <button type="button"
-                class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
-                :class="viewMode === 'table' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
-                @click="viewMode = 'table'">
-                <Table class="h-3 w-3" />
-                Table
-              </button>
-              <button type="button"
-                class="flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition"
-                :class="viewMode === 'code' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
-                @click="viewMode = 'code'">
-                <Code2 class="h-3 w-3" />
-                Code
-              </button>
-            </div>
             <div class="relative flex items-center flex-1 max-w-[160px]">
               <Search class="absolute left-2 h-3.5 w-3.5 text-muted pointer-events-none" />
               <input v-model="searchQuery" type="text" placeholder="Find field..."
@@ -579,7 +879,7 @@ onUnmounted(() => {
           <template v-else-if="viewMode === 'tree'">
             <TreeViewer v-if="!isEmpty && liveValidation.valid && filteredParsedData !== undefined" :node-key="null"
               :value="filteredParsedData" path="$" :depth="0" @copy="handleCopy" @download="handleDownload"
-              @sort="handleSortToggle" />
+              @sort="handleSortToggle" @copy-path="(p) => copyToClipboard(p)" />
             <p v-else-if="(searchQuery || jmesQuery) && filteredParsedData === undefined"
               class="p-2 text-xs text-muted">
               No matching fields found.
@@ -642,6 +942,35 @@ onUnmounted(() => {
             <p v-else class="p-2 text-xs text-muted">
               {{ isEmpty ? t('tree.emptyState') : t('tree.fixError') }}
             </p>
+          </template>
+
+          <!-- 5. YAML Export View -->
+          <template v-else-if="viewMode === 'yaml'">
+            <pre v-if="!isEmpty && liveValidation.valid && filteredYamlText"
+              class="whitespace-pre-wrap font-mono text-xs text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredYamlText }}</pre>
+            <p v-else-if="(searchQuery || jmesQuery) && !filteredYamlText" class="p-2 text-xs text-muted">
+              No matching fields found.
+            </p>
+            <p v-else class="p-2 text-xs text-muted">
+              {{ isEmpty ? t('tree.emptyState') : t('tree.fixError') }}
+            </p>
+          </template>
+
+          <!-- 6. CSV Export View (tabular data only) -->
+          <template v-else-if="viewMode === 'csv'">
+            <pre v-if="!isEmpty && liveValidation.valid && filteredCsvText"
+              class="whitespace-pre-wrap font-mono text-xs text-parchment selection:bg-key/30 p-2 leading-relaxed">{{ filteredCsvText }}</pre>
+            <p v-else-if="!isEmpty && liveValidation.valid" class="p-2 text-xs text-muted">
+              Top-level value must be an object or array to export as CSV.
+            </p>
+            <p v-else class="p-2 text-xs text-muted">
+              {{ isEmpty ? t('tree.emptyState') : t('tree.fixError') }}
+            </p>
+          </template>
+
+          <!-- 7. JSON Schema Validation -->
+          <template v-else-if="viewMode === 'schema'">
+            <SchemaPanel :data="parsedForTree" :has-data="!isEmpty && liveValidation.valid" />
           </template>
         </div>
       </section>

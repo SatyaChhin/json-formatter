@@ -4,25 +4,21 @@ import loader from '@monaco-editor/loader'
 import type * as Monaco from 'monaco-editor'
 import { useTheme } from '~/composables/useTheme'
 
-const props = withDefaults(
-  defineProps<{
-    modelValue: string
-    readOnly?: boolean
-  }>(),
-  { readOnly: false }
-)
+const props = defineProps<{
+  original: string
+  modified: string
+}>()
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
+  'update:modified': [value: string]
 }>()
 
 const { theme } = useTheme()
 
 const containerRef = ref<HTMLDivElement | null>(null)
-const editorRef = shallowRef<Monaco.editor.IStandaloneCodeEditor | null>(null)
+const diffEditorRef = shallowRef<Monaco.editor.IStandaloneDiffEditor | null>(null)
 let monacoApi: typeof Monaco | null = null
 let resizeObserver: ResizeObserver | null = null
-// Guards against feedback loops when we push external changes into the editor
 let applyingExternalValue = false
 
 const DARK_THEME = 'json-formatter-ink'
@@ -32,6 +28,9 @@ function themeName(t: 'light' | 'dark') {
   return t === 'light' ? LIGHT_THEME : DARK_THEME
 }
 
+// Mirrors JsonEditor.vue's custom themes. monaco.editor.defineTheme is
+// idempotent (re-registering just overwrites with the same values), so it's
+// safe to call again here even though JsonEditor also registers them.
 function defineCustomThemes(monaco: typeof Monaco) {
   monaco.editor.defineTheme(DARK_THEME, {
     base: 'vs-dark',
@@ -40,7 +39,7 @@ function defineCustomThemes(monaco: typeof Monaco) {
       { token: 'string.key.json', foreground: '8FAEC9' },
       { token: 'string.value.json', foreground: '94BE8C' },
       { token: 'number.json', foreground: 'D9B36C' },
-      { token: 'keyword.json', foreground: 'C98A7E' }, // true / false / null
+      { token: 'keyword.json', foreground: 'C98A7E' },
       { token: 'delimiter.bracket.json', foreground: '8A939A' },
       { token: 'delimiter.array.json', foreground: '8A939A' },
       { token: 'delimiter.comma.json', foreground: '8A939A' },
@@ -93,72 +92,68 @@ onMounted(async () => {
 
   if (!containerRef.value) return
 
-  const editor = monaco.editor.create(containerRef.value, {
-    value: props.modelValue,
-    language: 'json',
+  const diffEditor = monaco.editor.createDiffEditor(containerRef.value, {
+    automaticLayout: false,
+    renderSideBySide: true,
     theme: themeName(theme.value),
-    automaticLayout: false, // we drive layout via ResizeObserver instead
-    minimap: { enabled: false },
     fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
     fontSize: 13,
     lineHeight: 20,
-    padding: { top: 12, bottom: 12 },
-    readOnly: props.readOnly,
+    minimap: { enabled: false },
     scrollBeyondLastLine: false,
-    renderLineHighlight: 'line',
-    tabSize: 2,
-    wordWrap: 'on',
+    originalEditable: false,
   })
 
-  editorRef.value = editor
+  const originalModel = monaco.editor.createModel(props.original, 'json')
+  const modifiedModel = monaco.editor.createModel(props.modified, 'json')
+  diffEditor.setModel({ original: originalModel, modified: modifiedModel })
+  diffEditorRef.value = diffEditor
 
-  editor.onDidChangeModelContent(() => {
+  modifiedModel.onDidChangeContent(() => {
     if (applyingExternalValue) return
-    emit('update:modelValue', editor.getValue())
+    emit('update:modified', modifiedModel.getValue())
   })
 
-  resizeObserver = new ResizeObserver(() => editor.layout())
+  resizeObserver = new ResizeObserver(() => diffEditor.layout())
   resizeObserver.observe(containerRef.value)
 })
 
 watch(
-  () => props.modelValue,
+  () => props.original,
   (next) => {
-    const editor = editorRef.value
-    if (!editor) return
-    if (editor.getValue() === next) return
+    const model = diffEditorRef.value?.getModel()?.original
+    if (!model || model.getValue() === next) return
     applyingExternalValue = true
-    const position = editor.getPosition()
-    editor.setValue(next)
-    if (position) editor.setPosition(position)
+    model.setValue(next)
     applyingExternalValue = false
   }
 )
 
 watch(
-  () => props.readOnly,
-  (readOnly) => {
-    editorRef.value?.updateOptions({ readOnly })
+  () => props.modified,
+  (next) => {
+    const model = diffEditorRef.value?.getModel()?.modified
+    if (!model || model.getValue() === next) return
+    applyingExternalValue = true
+    model.setValue(next)
+    applyingExternalValue = false
   }
 )
 
-// Swap Monaco's own theme (it doesn't read Tailwind/CSS variables) whenever
-// the app-wide light/dark toggle changes.
 watch(theme, (next) => {
   monacoApi?.editor.setTheme(themeName(next))
 })
 
 onBeforeUnmount(() => {
   resizeObserver?.disconnect()
-  editorRef.value?.dispose()
+  const model = diffEditorRef.value?.getModel()
+  model?.original?.dispose()
+  model?.modified?.dispose()
+  diffEditorRef.value?.dispose()
   monacoApi = null
-})
-
-defineExpose({
-  focus: () => editorRef.value?.focus(),
 })
 </script>
 
 <template>
-  <div ref="containerRef" class="h-full w-full" role="textbox" aria-label="JSON editor" />
+  <div ref="containerRef" class="h-full w-full" role="group" aria-label="JSON diff" />
 </template>

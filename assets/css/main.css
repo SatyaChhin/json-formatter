@@ -6,43 +6,127 @@
 @tailwind utilities;
 
 :root {
-  /* Dark theme (default) — rgb triplets consumed by tailwind.config.ts */
-  --c-ink: 18 20 28;
-  --c-ink-soft: 23 26 36;
-  --c-surface: 27 31 44;
-  --c-surface-raised: 35 40 56;
-  --c-surface-hair: 43 48 64;
-  --c-parchment: 232 230 222;
-  --c-muted: 136 144 166;
+  /* Dark theme (default) — "ledger" palette: graphite ground, warm-paper
+     text, one amber accent (--c-key, doubles as the UI accent — most of
+     the app already treats it that way). --c-datakey is the *other* key —
+     the color of actual JSON property names, kept separate so data and
+     chrome never compete. rgb triplets, consumed by tailwind.config.ts. */
+  --c-ink: 20 24 26;
+  --c-ink-soft: 27 33 36;
+  --c-surface: 27 33 36;
+  --c-surface-raised: 33 40 48;
+  --c-surface-hair: 43 51 56;
+  --c-parchment: 236 231 220;
+  --c-muted: 138 147 154;
 
-  --c-key: 139 147 248;
-  --c-key-dim: 90 95 168;
-  --c-string: 111 207 151;
-  --c-string-dim: 63 122 92;
-  --c-number: 242 177 68;
-  --c-number-dim: 168 122 49;
-  --c-boolean: 240 113 120;
-  --c-boolean-dim: 166 79 84;
+  --c-key: 232 163 61;
+  --c-key-dim: 180 123 39;
+  --c-datakey: 143 174 201;
+  --c-string: 148 190 140;
+  --c-string-dim: 100 138 92;
+  --c-number: 217 179 108;
+  --c-number-dim: 156 122 66;
+  --c-boolean: 201 138 126;
+  --c-boolean-dim: 150 96 84;
 }
 
-/* Light theme — same variable names, deeper accent values for AA contrast on white */
+/* Light theme — same variable names, deepened values for AA contrast on paper */
 .light {
-  --c-ink: 247 248 250;
-  --c-ink-soft: 240 241 245;
+  --c-ink: 238 240 234;
+  --c-ink-soft: 231 233 226;
   --c-surface: 255 255 255;
-  --c-surface-raised: 244 245 248;
-  --c-surface-hair: 224 226 232;
-  --c-parchment: 24 26 34;
-  --c-muted: 100 106 122;
+  --c-surface-raised: 247 247 243;
+  --c-surface-hair: 217 220 211;
+  --c-parchment: 23 26 27;
+  --c-muted: 91 98 102;
 
-  --c-key: 79 84 209;
-  --c-key-dim: 178 181 240;
-  --c-string: 24 128 77;
-  --c-string-dim: 140 199 168;
-  --c-number: 168 111 8;
-  --c-number-dim: 214 176 103;
-  --c-boolean: 194 47 58;
-  --c-boolean-dim: 224 150 156;
+  --c-key: 181 105 26;
+  --c-key-dim: 201 150 100;
+  --c-datakey: 63 110 146;
+  --c-string: 76 127 70;
+  --c-string-dim: 130 160 120;
+  --c-number: 156 116 35;
+  --c-number-dim: 190 158 104;
+  --c-boolean: 168 82 70;
+  --c-boolean-dim: 198 138 128;
+}
+
+/* Theme presets — swap the neutral ground + the one accent color
+   (--c-key / --c-key-dim). --c-string/number/boolean/datakey deliberately
+   stay constant across every preset: they encode JSON data types, not UI
+   preference, so they shouldn't shift when someone picks a different look.
+   "ledger" is the default and needs no override block — it *is* the
+   :root / .light values above. Selectors use the html[data-preset=…]
+   element prefix so they reliably beat :root/.light on specificity
+   regardless of source order. */
+
+html[data-preset='terminal'] {
+  --c-ink: 14 18 16;
+  --c-ink-soft: 20 25 23;
+  --c-surface: 20 25 23;
+  --c-surface-raised: 26 33 29;
+  --c-surface-hair: 38 48 41;
+  --c-parchment: 228 235 226;
+  --c-muted: 124 138 128;
+  --c-key: 74 222 128;
+  --c-key-dim: 47 148 88;
+}
+html[data-preset='terminal'].light {
+  --c-ink: 234 240 234;
+  --c-ink-soft: 226 233 226;
+  --c-surface: 255 255 255;
+  --c-surface-raised: 244 248 244;
+  --c-surface-hair: 214 222 213;
+  --c-parchment: 20 30 22;
+  --c-muted: 90 104 94;
+  --c-key: 30 125 74;
+  --c-key-dim: 100 170 130;
+}
+
+html[data-preset='signal'] {
+  --c-ink: 15 19 32;
+  --c-ink-soft: 22 27 44;
+  --c-surface: 22 27 44;
+  --c-surface-raised: 28 34 54;
+  --c-surface-hair: 42 49 80;
+  --c-parchment: 230 233 245;
+  --c-muted: 131 140 168;
+  --c-key: 91 157 245;
+  --c-key-dim: 58 100 168;
+}
+html[data-preset='signal'].light {
+  --c-ink: 238 240 248;
+  --c-ink-soft: 230 233 244;
+  --c-surface: 255 255 255;
+  --c-surface-raised: 245 246 252;
+  --c-surface-hair: 217 220 236;
+  --c-parchment: 20 23 42;
+  --c-muted: 90 97 128;
+  --c-key: 42 95 190;
+  --c-key-dim: 120 155 220;
+}
+
+html[data-preset='ember'] {
+  --c-ink: 26 20 18;
+  --c-ink-soft: 33 26 23;
+  --c-surface: 33 26 23;
+  --c-surface-raised: 41 32 28;
+  --c-surface-hair: 58 46 40;
+  --c-parchment: 240 230 222;
+  --c-muted: 160 139 128;
+  --c-key: 242 107 77;
+  --c-key-dim: 168 76 55;
+}
+html[data-preset='ember'].light {
+  --c-ink: 245 237 231;
+  --c-ink-soft: 240 231 224;
+  --c-surface: 255 255 255;
+  --c-surface-raised: 251 243 238;
+  --c-surface-hair: 229 213 201;
+  --c-parchment: 36 24 19;
+  --c-muted: 122 106 96;
+  --c-key: 196 67 42;
+  --c-key-dim: 216 130 105;
 }
 
 html,

@@ -1,10 +1,13 @@
 // composables/useTheme.ts
-import type { Theme } from '~/types/i18n'
+import type { Theme, ThemePreset } from '~/types/i18n'
 
 const STORAGE_KEY = 'json-formatter:theme'
+const PRESET_STORAGE_KEY = 'json-formatter:theme-preset'
+const VALID_PRESETS: ThemePreset[] = ['ledger', 'terminal', 'signal', 'ember']
 
 export function useTheme() {
   const theme = useState<Theme>('theme', () => 'dark')
+  const preset = useState<ThemePreset>('theme-preset', () => 'ledger')
 
   function applyToDocument(next: Theme) {
     if (!import.meta.client) return
@@ -12,10 +15,21 @@ export function useTheme() {
     document.documentElement.classList.toggle('dark', next === 'dark')
   }
 
+  function applyPreset(next: ThemePreset) {
+    if (!import.meta.client) return
+    document.documentElement.setAttribute('data-preset', next)
+  }
+
   function setTheme(next: Theme) {
     theme.value = next
     applyToDocument(next)
     if (import.meta.client) localStorage.setItem(STORAGE_KEY, next)
+  }
+
+  function setPreset(next: ThemePreset) {
+    preset.value = next
+    applyPreset(next)
+    if (import.meta.client) localStorage.setItem(PRESET_STORAGE_KEY, next)
   }
 
   function toggleTheme() {
@@ -34,7 +48,14 @@ export function useTheme() {
           : 'dark'
     theme.value = preferred
     applyToDocument(preferred)
+
+    const savedPreset = localStorage.getItem(PRESET_STORAGE_KEY)
+    const preferredPreset: ThemePreset = VALID_PRESETS.includes(savedPreset as ThemePreset)
+      ? (savedPreset as ThemePreset)
+      : 'ledger'
+    preset.value = preferredPreset
+    applyPreset(preferredPreset)
   }
 
-  return { theme, setTheme, toggleTheme, initTheme }
+  return { theme, preset, setTheme, setPreset, toggleTheme, initTheme }
 }

@@ -24,13 +24,15 @@ export default <Partial<Config>>{
         },
         parchment: 'rgb(var(--c-parchment) / <alpha-value>)',
         muted: 'rgb(var(--c-muted) / <alpha-value>)',
-        // Token palette — mirrors JSON syntax highlighting, used across the
-        // UI (not just inside the editor) as the app's signature color
-        // system. Values also shift slightly per-theme for AA contrast.
+        // `key` is the app's single UI accent (buttons, active states,
+        // focus rings) — most of the UI already treats it that way.
+        // `datakey` is the *other* key: the color of actual JSON property
+        // names, kept separate so chrome and data never compete.
         key: {
           DEFAULT: 'rgb(var(--c-key) / <alpha-value>)',
           dim: 'rgb(var(--c-key-dim) / <alpha-value>)',
         },
+        datakey: 'rgb(var(--c-datakey) / <alpha-value>)',
         string: {
           DEFAULT: 'rgb(var(--c-string) / <alpha-value>)',
           dim: 'rgb(var(--c-string-dim) / <alpha-value>)',
