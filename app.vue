@@ -34,6 +34,7 @@ import {
   Ellipsis,
   Plus,
   Minus,
+  CircleHelp,
 } from 'lucide-vue-next'
 import { useJsonFormatter } from '~/composables/useJsonFormatter'
 import { useClipboard } from '~/composables/useClipboard'
@@ -45,6 +46,7 @@ import { useHistory } from '~/composables/useHistory'
 import { sampleDatasets } from '~/utils/sampleData'
 import { jsonToYaml, rowsToCsv } from '~/utils/convert'
 import { encodeShareHash, decodeShareHash } from '~/utils/share'
+import { featureGroups } from '~/utils/features'
 import { localeOptions, themePresetOptions, codeColorSchemeOptions, fontFamilyOptions, FONT_SIZE_MIN, FONT_SIZE_MAX } from '~/types/i18n'
 import type { IndentSize, SampleDataset } from '~/types/json'
 import type { Locale, FontFamily } from '~/types/i18n'
@@ -478,6 +480,7 @@ function handleLocaleSelect(next: Locale) {
 const isSharing = ref(false)
 const historyMenuOpen = ref(false)
 const moreMenuOpen = ref(false)
+const helpMenuOpen = ref(false)
 
 // Diff mode: compares the current document against a second, pasted-in JSON doc
 const isDiffMode = ref(false)
@@ -756,6 +759,30 @@ onUnmounted(() => {
               <Bookmark class="h-3.5 w-3.5" aria-hidden="true" />
               Save to history
             </button>
+          </div>
+        </div>
+        <div class="relative">
+          <button type="button"
+            class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+            title="Help" aria-label="Help" :aria-expanded="helpMenuOpen" @click="helpMenuOpen = !helpMenuOpen">
+            <CircleHelp class="h-4 w-4" aria-hidden="true" />
+          </button>
+          <div v-if="helpMenuOpen"
+            class="absolute right-0 top-full z-20 mt-1 max-h-[75vh] w-80 overflow-y-auto rounded border border-surface-hair bg-surface-raised shadow-panel font-mono">
+            <div class="sticky top-0 flex items-center justify-between border-b border-surface-hair bg-surface-raised px-3 py-2">
+              <span class="text-[11px] uppercase tracking-wide text-muted">{{ t('help.title') }}</span>
+              <button type="button" class="rounded p-0.5 text-muted transition hover:text-key" aria-label="Close"
+                @click="helpMenuOpen = false">
+                <X class="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </div>
+            <div v-for="group in featureGroups" :key="group.titleKey" class="border-b border-surface-hair p-2 last:border-b-0">
+              <p class="px-1 py-1 text-[10.5px] uppercase tracking-wide text-muted">{{ t(group.titleKey) }}</p>
+              <div v-for="item in group.items" :key="item.labelKey" class="rounded px-1 py-1.5">
+                <p class="text-xs font-medium text-parchment">{{ t(item.labelKey) }}</p>
+                <p class="mt-0.5 text-[11px] leading-snug text-muted">{{ t(item.descKey) }}</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
