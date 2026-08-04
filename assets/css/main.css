@@ -137,6 +137,70 @@ html[data-preset='ember'].light {
   --c-key-dim: 216 130 105;
 }
 
+/* Code color schemes — swap ONLY the JSON syntax palette
+   (--c-string/number/boolean/datakey [+ -dim]), independently of the
+   theme-preset blocks above (which only touch UI accent/neutrals).
+   "classic" is the default and needs no override block — it *is* the
+   :root / .light values above. See also JsonEditor.vue's CODE_SCHEME_HEX,
+   which mirrors these same colors for Monaco (can't read CSS vars). */
+
+html[data-code-scheme='ocean'] {
+  --c-string: 110 198 192;
+  --c-string-dim: 63 138 132;
+  --c-number: 126 182 224;
+  --c-number-dim: 74 128 168;
+  --c-boolean: 179 157 219;
+  --c-boolean-dim: 128 106 168;
+  --c-datakey: 91 141 190;
+}
+html[data-code-scheme='ocean'].light {
+  --c-string: 47 143 135;
+  --c-string-dim: 110 170 164;
+  --c-number: 46 109 164;
+  --c-number-dim: 110 150 190;
+  --c-boolean: 122 95 176;
+  --c-boolean-dim: 168 148 208;
+  --c-datakey: 51 88 122;
+}
+
+html[data-code-scheme='sunset'] {
+  --c-string: 229 139 118;
+  --c-string-dim: 184 99 79;
+  --c-number: 224 164 88;
+  --c-number-dim: 168 118 58;
+  --c-boolean: 217 126 163;
+  --c-boolean-dim: 160 82 111;
+  --c-datakey: 201 122 61;
+}
+html[data-code-scheme='sunset'].light {
+  --c-string: 184 86 60;
+  --c-string-dim: 214 153 133;
+  --c-number: 166 106 30;
+  --c-number-dim: 208 172 114;
+  --c-boolean: 168 62 104;
+  --c-boolean-dim: 204 140 170;
+  --c-datakey: 138 84 35;
+}
+
+html[data-code-scheme='mono'] {
+  --c-string: 185 194 176;
+  --c-string-dim: 138 146 132;
+  --c-number: 199 185 143;
+  --c-number-dim: 148 137 106;
+  --c-boolean: 183 154 149;
+  --c-boolean-dim: 138 114 110;
+  --c-datakey: 154 167 176;
+}
+html[data-code-scheme='mono'].light {
+  --c-string: 92 107 84;
+  --c-string-dim: 151 162 142;
+  --c-number: 107 95 62;
+  --c-number-dim: 168 156 122;
+  --c-boolean: 107 79 73;
+  --c-boolean-dim: 168 138 131;
+  --c-datakey: 71 85 95;
+}
+
 html,
 body,
 #__nuxt {

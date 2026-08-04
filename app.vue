@@ -40,11 +40,12 @@ import { useClipboard } from '~/composables/useClipboard'
 import { useLocale } from '~/composables/useLocale'
 import { useTheme } from '~/composables/useTheme'
 import { useFontSettings } from '~/composables/useFontSettings'
+import { useCodeColorScheme } from '~/composables/useCodeColorScheme'
 import { useHistory } from '~/composables/useHistory'
 import { sampleDatasets } from '~/utils/sampleData'
 import { jsonToYaml, rowsToCsv } from '~/utils/convert'
 import { encodeShareHash, decodeShareHash } from '~/utils/share'
-import { localeOptions, themePresetOptions, fontFamilyOptions, FONT_SIZE_MIN, FONT_SIZE_MAX } from '~/types/i18n'
+import { localeOptions, themePresetOptions, codeColorSchemeOptions, fontFamilyOptions, FONT_SIZE_MIN, FONT_SIZE_MAX } from '~/types/i18n'
 import type { IndentSize, SampleDataset } from '~/types/json'
 import type { Locale, FontFamily } from '~/types/i18n'
 
@@ -66,6 +67,7 @@ const { state, options, validate, format, minify, setIndentSize, toggleSortKeys,
 const { toasts, copyToClipboard, downloadJson, pushToast } = useClipboard()
 const { locale, t, setLocale, initLocale } = useLocale()
 const { theme, preset, setTheme, setPreset, initTheme } = useTheme()
+const { codeColorScheme, setCodeColorScheme, initCodeColorScheme } = useCodeColorScheme()
 const { fontFamily, fontSize, setFontFamily, setFontSize, initFontSettings } = useFontSettings()
 const themeMenuOpen = ref(false)
 const { entries: historyEntries, initHistory, save: saveHistory, remove: removeHistoryEntry, clear: clearHistory } = useHistory()
@@ -542,6 +544,7 @@ async function handleShare() {
 
 onMounted(async () => {
   initTheme()
+  initCodeColorScheme()
   initFontSettings()
   initLocale()
   initHistory()
@@ -638,6 +641,18 @@ onUnmounted(() => {
                 <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ background: opt.swatch }" aria-hidden="true" />
                 {{ opt.label }}
                 <Check v-if="preset === opt.id" class="ml-auto h-3.5 w-3.5 text-key" aria-hidden="true" />
+              </button>
+            </div>
+            <div class="border-t border-surface-hair p-1">
+              <p class="px-2 py-1 text-[10.5px] uppercase tracking-wide text-muted">Code Color</p>
+              <button v-for="opt in codeColorSchemeOptions" :key="opt.id" type="button"
+                class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
+                :aria-pressed="codeColorScheme === opt.id" @click="setCodeColorScheme(opt.id)">
+                <span class="flex shrink-0 items-center gap-0.5" aria-hidden="true">
+                  <span v-for="swatch in opt.swatches" :key="swatch" class="h-2 w-2 rounded-full" :style="{ background: swatch }" />
+                </span>
+                {{ opt.label }}
+                <Check v-if="codeColorScheme === opt.id" class="ml-auto h-3.5 w-3.5 text-key" aria-hidden="true" />
               </button>
             </div>
             <div class="border-t border-surface-hair p-1">

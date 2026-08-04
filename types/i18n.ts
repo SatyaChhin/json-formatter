@@ -34,6 +34,27 @@ export const themePresetOptions: ThemePresetOption[] = [
   { id: 'ember', label: 'Ember', swatch: '#F26B4D' },
 ]
 
+/**
+ * JSON syntax-highlight palette (string/number/boolean/key colors), chosen
+ * independently of ThemePreset — the preset picks the UI accent/neutrals,
+ * this picks the data colors, so they can be mixed freely.
+ */
+export type CodeColorScheme = 'classic' | 'ocean' | 'sunset' | 'mono'
+
+export interface CodeColorSchemeOption {
+  id: CodeColorScheme
+  label: string
+  /** Representative swatches, dark-mode hex, in [string, number, boolean, datakey] order */
+  swatches: [string, string, string, string]
+}
+
+export const codeColorSchemeOptions: CodeColorSchemeOption[] = [
+  { id: 'classic', label: 'Classic', swatches: ['#94BE8C', '#D9B36C', '#C98A7E', '#8FAEC9'] },
+  { id: 'ocean', label: 'Ocean', swatches: ['#6EC6C0', '#7EB6E0', '#B39DDB', '#5B8DBE'] },
+  { id: 'sunset', label: 'Sunset', swatches: ['#E58B76', '#E0A458', '#D97EA3', '#C97A3D'] },
+  { id: 'mono', label: 'Mono', swatches: ['#B9C2B0', '#C7B98F', '#B79A95', '#9AA7B0'] },
+]
+
 /** Selectable monospace faces — used for editor + all JSON display panels */
 export type FontFamily = 'plex-mono' | 'jetbrains-mono' | 'fira-code' | 'source-code-pro' | 'roboto-mono'
 
