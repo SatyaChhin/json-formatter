@@ -482,6 +482,27 @@ const historyMenuOpen = ref(false)
 const moreMenuOpen = ref(false)
 const helpMenuOpen = ref(false)
 
+const themeMenuRef = ref<HTMLElement | null>(null)
+const historyMenuRef = ref<HTMLElement | null>(null)
+const moreMenuRef = ref<HTMLElement | null>(null)
+const helpMenuRef = ref<HTMLElement | null>(null)
+
+function handleClickOutsideMenus(event: MouseEvent) {
+  const target = event.target as Node
+  if (themeMenuOpen.value && themeMenuRef.value && !themeMenuRef.value.contains(target)) {
+    themeMenuOpen.value = false
+  }
+  if (historyMenuOpen.value && historyMenuRef.value && !historyMenuRef.value.contains(target)) {
+    historyMenuOpen.value = false
+  }
+  if (moreMenuOpen.value && moreMenuRef.value && !moreMenuRef.value.contains(target)) {
+    moreMenuOpen.value = false
+  }
+  if (helpMenuOpen.value && helpMenuRef.value && !helpMenuRef.value.contains(target)) {
+    helpMenuOpen.value = false
+  }
+}
+
 // Diff mode: compares the current document against a second, pasted-in JSON doc
 const isDiffMode = ref(false)
 const diffCompareText = ref('')
@@ -552,6 +573,7 @@ onMounted(async () => {
   initLocale()
   initHistory()
   document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('click', handleClickOutsideMenus)
 
   // A share link in the URL hash takes priority over the last locally saved document
   let loadedFromShare = false
@@ -577,6 +599,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('click', handleClickOutsideMenus)
 })
 </script>
 
@@ -613,7 +636,7 @@ onUnmounted(() => {
             {{ opt.code.toUpperCase() }}
           </button>
         </div>
-        <div class="relative">
+        <div class="relative" ref="themeMenuRef">
           <button type="button"
             class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="Theme" aria-label="Theme" :aria-expanded="themeMenuOpen" @click="themeMenuOpen = !themeMenuOpen">
@@ -695,7 +718,7 @@ onUnmounted(() => {
           @click="isDiffMode = !isDiffMode">
           <GitCompare class="h-4 w-4" aria-hidden="true" />
         </button>
-        <div class="relative">
+        <div class="relative" ref="historyMenuRef">
           <button type="button"
             class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="Document history" aria-label="Document history" :aria-expanded="historyMenuOpen"
@@ -732,7 +755,7 @@ onUnmounted(() => {
             </ul>
           </div>
         </div>
-        <div class="relative">
+        <div class="relative" ref="moreMenuRef">
           <button type="button"
             class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="More" aria-label="More options" :aria-expanded="moreMenuOpen" @click="moreMenuOpen = !moreMenuOpen">
@@ -761,7 +784,7 @@ onUnmounted(() => {
             </button>
           </div>
         </div>
-        <div class="relative">
+        <div class="relative" ref="helpMenuRef">
           <button type="button"
             class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="Help" aria-label="Help" :aria-expanded="helpMenuOpen" @click="helpMenuOpen = !helpMenuOpen">
