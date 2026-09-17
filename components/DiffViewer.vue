@@ -3,6 +3,7 @@ import { onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import loader from '@monaco-editor/loader'
 import type * as Monaco from 'monaco-editor'
 import { useTheme } from '~/composables/useTheme'
+import { useFontSettings } from '~/composables/useFontSettings'
 
 const props = defineProps<{
   original: string
@@ -14,6 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const { theme } = useTheme()
+const { fontFamilyStack } = useFontSettings()
 
 const containerRef = ref<HTMLDivElement | null>(null)
 const diffEditorRef = shallowRef<Monaco.editor.IStandaloneDiffEditor | null>(null)
@@ -96,7 +98,7 @@ onMounted(async () => {
     automaticLayout: false,
     renderSideBySide: true,
     theme: themeName(theme.value),
-    fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
+    fontFamily: fontFamilyStack.value,
     fontSize: 13,
     lineHeight: 20,
     minimap: { enabled: false },
@@ -139,6 +141,10 @@ watch(
     applyingExternalValue = false
   }
 )
+
+watch(fontFamilyStack, (next) => {
+  diffEditorRef.value?.updateOptions({ fontFamily: next })
+})
 
 watch(theme, (next) => {
   monacoApi?.editor.setTheme(themeName(next))

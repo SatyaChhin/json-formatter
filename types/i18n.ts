@@ -56,7 +56,7 @@ export const codeColorSchemeOptions: CodeColorSchemeOption[] = [
 ]
 
 /** Selectable monospace faces — used for editor + all JSON display panels */
-export type FontFamily = 'plex-mono' | 'jetbrains-mono' | 'fira-code' | 'source-code-pro' | 'roboto-mono'
+export type FontFamily = 'google-sans' | 'plex-mono' | 'jetbrains-mono' | 'fira-code' | 'source-code-pro' | 'roboto-mono'
 
 export interface FontFamilyOption {
   id: FontFamily
@@ -66,6 +66,7 @@ export interface FontFamilyOption {
 }
 
 export const fontFamilyOptions: FontFamilyOption[] = [
+  { id: 'google-sans', label: 'Google Sans', stack: '"Google Sans", "Noto Sans Khmer", ui-sans-serif, system-ui, sans-serif' },
   { id: 'plex-mono', label: 'IBM Plex Mono', stack: '"IBM Plex Mono", ui-monospace, SFMono-Regular, monospace' },
   { id: 'jetbrains-mono', label: 'JetBrains Mono', stack: '"JetBrains Mono", ui-monospace, SFMono-Regular, monospace' },
   { id: 'fira-code', label: 'Fira Code', stack: '"Fira Code", ui-monospace, SFMono-Regular, monospace' },

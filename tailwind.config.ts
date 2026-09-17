@@ -51,8 +51,8 @@ export default <Partial<Config>>{
         // composables/useFontSettings.ts) so the user's font-family choice
         // applies everywhere font-mono is used; falls back if unset.
         mono: ['var(--font-mono-active)', 'ui-monospace', 'SFMono-Regular', 'monospace'],
-        sans: ['Manrope', '"Noto Sans Khmer"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        khmer: ['"Noto Sans Khmer"', 'Manrope', 'ui-sans-serif', 'sans-serif'],
+        sans: ['"Google Sans"', '"Noto Sans Khmer"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        khmer: ['"Noto Sans Khmer"', '"Google Sans"', 'ui-sans-serif', 'sans-serif'],
       },
       borderRadius: {
         sm: '4px',

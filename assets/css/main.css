@@ -1,5 +1,5 @@
 /* assets/css/main.css */
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Fira+Code:wght@400;500;600&family=Source+Code+Pro:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Fira+Code:wght@400;500;600&family=Source+Code+Pro:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&family=Noto+Sans+Khmer:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -34,7 +34,7 @@
      applies the same var through an inline style). Kept as plain :root
      properties (not part of the theme-preset system above) since font
      choice is a reading preference, independent of color theme/preset. */
-  --font-mono-active: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-mono-active: "Google Sans", "Noto Sans Khmer", ui-sans-serif, system-ui, sans-serif;
   --font-size-content: 13px;
 }
 
@@ -212,9 +212,9 @@ body {
   transition: background-color 150ms ease, color 150ms ease;
 }
 
-/* Khmer needs its own script-appropriate face; Manrope has no Khmer glyphs */
+/* Khmer needs its own script-appropriate face; Google Sans has no Khmer glyphs */
 html[lang='km'] body {
-  font-family: 'Noto Sans Khmer', Manrope, ui-sans-serif, sans-serif;
+  font-family: 'Noto Sans Khmer', 'Google Sans', ui-sans-serif, sans-serif;
 }
 
 ::selection {
