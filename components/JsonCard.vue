@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref, shallowRef, watch, type Component } from 'vue'
+import { computed, ref, shallowRef, watch, type Component } from 'vue'
 import { Check, Copy, Download, FileJson, LayoutTemplate, Loader2, Palette, Search, X } from 'lucide-vue-next'
 
 const props = defineProps<{
   /** Source JSON text — the card body resets to this whenever it changes */
   json: string
 }>()
+
+import { usePopover } from '~/composables/usePopover'
 
 const emit = defineEmits<{
   toast: [text: string, variant: 'success' | 'error' | 'info']
@@ -86,8 +88,10 @@ const cardTemplates: CardTemplate[] = [
   },
 ]
 
-const templateId = ref(cardTemplates[0]!.id)
-const template = computed(() => cardTemplates.find((tpl) => tpl.id === templateId.value) ?? cardTemplates[0]!)
+const defaultTemplate = cardTemplates.find((tpl) => tpl.id === 'mac-light')!
+
+const templateId = ref(defaultTemplate.id)
+const template = computed(() => cardTemplates.find((tpl) => tpl.id === templateId.value) ?? defaultTemplate)
 const showBackdrop = ref(false)
 
 function applyTemplate(tpl: CardTemplate) {
@@ -118,7 +122,7 @@ const colorTargets: { id: ColorTarget; label: string; presets: string[] }[] = [
 const ICON_LIMIT = 100
 
 const title = ref('API Response Data')
-const colors = ref<Record<ColorTarget, string>>({ ...cardTemplates[0]!.colors })
+const colors = ref<Record<ColorTarget, string>>({ ...defaultTemplate.colors })
 const activeColorTarget = ref<ColorTarget>('headerBg')
 const activeTarget = computed(() => colorTargets.find((target) => target.id === activeColorTarget.value)!)
 const hexDraft = ref(colors.value.headerBg)
@@ -129,14 +133,11 @@ watch(() => props.json, (next) => {
   text.value = next
 })
 
-const colorMenuOpen = ref(false)
-const templateMenuOpen = ref(false)
-const iconMenuOpen = ref(false)
+const { isOpen: colorMenuOpen, rootRef: colorMenuRef, toggle: toggleColorMenu } = usePopover()
+const { isOpen: templateMenuOpen, rootRef: templateMenuRef, toggle: toggleTemplateMenu } = usePopover()
+const { isOpen: iconMenuOpen, rootRef: iconMenuRef } = usePopover()
 const iconSearch = ref('')
 const iconSearchRef = ref<HTMLInputElement | null>(null)
-const colorMenuRef = ref<HTMLElement | null>(null)
-const templateMenuRef = ref<HTMLElement | null>(null)
-const iconMenuRef = ref<HTMLElement | null>(null)
 const captureRef = ref<HTMLElement | null>(null)
 
 // The full lucide icon map is large, so it's only loaded the first time the picker opens
@@ -157,26 +158,12 @@ const filteredIcons = computed<[string, Component][]>(() => {
 
 async function toggleIconMenu() {
   iconMenuOpen.value = !iconMenuOpen.value
-  colorMenuOpen.value = false
-  templateMenuOpen.value = false
   if (!iconMenuOpen.value) return
   if (!allIcons.value) {
     const mod = await import('lucide-vue-next')
     allIcons.value = mod.icons as Record<string, Component>
   }
   iconSearchRef.value?.focus()
-}
-
-function toggleColorMenu() {
-  colorMenuOpen.value = !colorMenuOpen.value
-  iconMenuOpen.value = false
-  templateMenuOpen.value = false
-}
-
-function toggleTemplateMenu() {
-  templateMenuOpen.value = !templateMenuOpen.value
-  colorMenuOpen.value = false
-  iconMenuOpen.value = false
 }
 
 function selectIcon(icon: Component) {
@@ -215,22 +202,6 @@ function resetColors() {
 watch(activeColorTarget, (target) => {
   hexDraft.value = colors.value[target]
 })
-
-function handleClickOutside(event: MouseEvent) {
-  const target = event.target as Node
-  if (colorMenuOpen.value && colorMenuRef.value && !colorMenuRef.value.contains(target)) {
-    colorMenuOpen.value = false
-  }
-  if (templateMenuOpen.value && templateMenuRef.value && !templateMenuRef.value.contains(target)) {
-    templateMenuOpen.value = false
-  }
-  if (iconMenuOpen.value && iconMenuRef.value && !iconMenuRef.value.contains(target)) {
-    iconMenuOpen.value = false
-  }
-}
-
-onMounted(() => document.addEventListener('click', handleClickOutside))
-onUnmounted(() => document.removeEventListener('click', handleClickOutside))
 
 /** Transient per-button status label, e.g. "Copied!" for 2s */
 type ActionState = 'idle' | 'busy' | 'done' | 'failed'
@@ -317,7 +288,7 @@ function slugify(value: string): string {
 }
 
 const actionButtonClass =
-  'flex items-center gap-1 rounded border border-surface-hair px-2 py-1 text-xs text-parchment transition hover:border-key/50 hover:text-key disabled:cursor-wait disabled:opacity-60'
+  'flex items-center gap-1 rounded-full border border-surface-hair px-2.5 py-1 text-xs text-parchment transition hover:border-key/50 hover:text-key disabled:cursor-wait disabled:opacity-60'
 </script>
 
 <template>
@@ -392,8 +363,8 @@ const actionButtonClass =
           <!-- Which part of the card to color -->
           <div class="grid grid-cols-4 gap-0.5 border-b border-surface-hair p-1">
             <button v-for="target in colorTargets" :key="target.id" type="button"
-              class="flex flex-col items-center gap-1 rounded px-1 py-1.5 text-[10.5px] transition"
-              :class="activeColorTarget === target.id ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
+              class="flex flex-col items-center gap-1 rounded-full px-1 py-1.5 text-[10.5px] transition"
+              :class="activeColorTarget === target.id ? ' text-key' : 'text-muted hover:text-parchment'"
               :aria-pressed="activeColorTarget === target.id" @click="activeColorTarget = target.id">
               <span class="h-4 w-4 rounded-full border border-surface-hair"
                 :style="{ backgroundColor: colors[target.id] }" aria-hidden="true" />
@@ -416,9 +387,9 @@ const actionButtonClass =
                 class="h-8 w-10 cursor-pointer rounded border border-surface-hair bg-transparent p-0.5"
                 aria-label="Pick custom color" @input="setColor(($event.target as HTMLInputElement).value)" />
               <input v-model="hexDraft" type="text" maxlength="7" spellcheck="false"
-                class="w-24 rounded border border-surface-hair bg-surface px-2 py-1 font-mono text-xs uppercase text-parchment focus:border-key/50 focus:outline-none"
+                class="w-24 rounded border border-surface-hair bg-surface px-2 py-1 text-xs uppercase text-parchment focus:border-key/50 focus:outline-none"
                 aria-label="Hex color" @keydown.enter="commitHexDraft" @blur="commitHexDraft" />
-              <button type="button" class="ml-auto text-[11px] text-muted transition hover:text-key"
+              <button type="button" class="ml-auto text-[11px] text-muted transition hover:text-key rounded-full"
                 @click="resetColors">
                 Reset to template
               </button>
@@ -436,7 +407,7 @@ const actionButtonClass =
       </button>
 
       <button type="button"
-        class="flex items-center gap-1 rounded border border-key/50 bg-key/20 px-2 py-1 text-xs text-key transition hover:bg-key/30 disabled:cursor-wait disabled:opacity-60"
+        class="flex items-center gap-1 rounded-full border border-key/50 bg-key/20 px-2 py-1 text-xs text-key transition hover:bg-key/30 disabled:cursor-wait disabled:opacity-60"
         :disabled="downloadState === 'busy'" @click="handleDownloadImage">
         <Loader2 v-if="downloadState === 'busy'" class="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
         <Check v-else-if="downloadState === 'done'" class="h-3.5 w-3.5" aria-hidden="true" />
@@ -476,7 +447,7 @@ const actionButtonClass =
         <div v-else class="flex items-center gap-3 border-b border-black/5 px-5 py-4 transition-colors duration-300"
           :style="{ backgroundColor: colors.headerBg, color: colors.headerText }">
           <div ref="iconMenuRef" class="relative">
-            <button type="button" class="rounded-lg bg-white/50 p-2 transition-colors hover:bg-white"
+            <button type="button" class="rounded-full bg-white/50 p-2 transition-colors hover:bg-white"
               title="Change icon" :aria-expanded="iconMenuOpen" @click="toggleIconMenu">
               <component :is="headerIcon" class="h-6 w-6" aria-hidden="true" />
             </button>
@@ -497,7 +468,7 @@ const actionButtonClass =
                   No icons found
                 </p>
                 <button v-for="[name, icon] in filteredIcons" :key="name" type="button"
-                  class="flex items-center justify-center rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-blue-600"
+                  class="flex items-center justify-center rounded-full p-2 text-slate-600 transition-colors hover:bg-slate-100 hover:text-blue-600"
                   :title="name" @click="selectIcon(icon)">
                   <component :is="icon" class="h-5 w-5" aria-hidden="true" />
                 </button>

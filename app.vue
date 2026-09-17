@@ -44,6 +44,7 @@ import { useTheme } from '~/composables/useTheme'
 import { useFontSettings } from '~/composables/useFontSettings'
 import { useCodeColorScheme } from '~/composables/useCodeColorScheme'
 import { useHistory } from '~/composables/useHistory'
+import { usePopover } from '~/composables/usePopover'
 import { sampleDatasets } from '~/utils/sampleData'
 import { jsonToYaml, rowsToCsv } from '~/utils/convert'
 import { encodeShareHash, decodeShareHash } from '~/utils/share'
@@ -73,7 +74,7 @@ const { locale, t, setLocale, initLocale } = useLocale()
 const { theme, preset, setTheme, setPreset, initTheme } = useTheme()
 const { codeColorScheme, setCodeColorScheme, initCodeColorScheme } = useCodeColorScheme()
 const { fontFamily, fontSize, setFontFamily, setFontSize, initFontSettings } = useFontSettings()
-const themeMenuOpen = ref(false)
+const { isOpen: themeMenuOpen, rootRef: themeMenuRef } = usePopover()
 const { entries: historyEntries, initHistory, save: saveHistory, remove: removeHistoryEntry, clear: clearHistory } = useHistory()
 
 // Editor state content, view mode & search query
@@ -480,30 +481,9 @@ function handleLocaleSelect(next: Locale) {
 }
 
 const isSharing = ref(false)
-const historyMenuOpen = ref(false)
-const moreMenuOpen = ref(false)
-const helpMenuOpen = ref(false)
-
-const themeMenuRef = ref<HTMLElement | null>(null)
-const historyMenuRef = ref<HTMLElement | null>(null)
-const moreMenuRef = ref<HTMLElement | null>(null)
-const helpMenuRef = ref<HTMLElement | null>(null)
-
-function handleClickOutsideMenus(event: MouseEvent) {
-  const target = event.target as Node
-  if (themeMenuOpen.value && themeMenuRef.value && !themeMenuRef.value.contains(target)) {
-    themeMenuOpen.value = false
-  }
-  if (historyMenuOpen.value && historyMenuRef.value && !historyMenuRef.value.contains(target)) {
-    historyMenuOpen.value = false
-  }
-  if (moreMenuOpen.value && moreMenuRef.value && !moreMenuRef.value.contains(target)) {
-    moreMenuOpen.value = false
-  }
-  if (helpMenuOpen.value && helpMenuRef.value && !helpMenuRef.value.contains(target)) {
-    helpMenuOpen.value = false
-  }
-}
+const { isOpen: historyMenuOpen, rootRef: historyMenuRef } = usePopover()
+const { isOpen: moreMenuOpen, rootRef: moreMenuRef } = usePopover()
+const { isOpen: helpMenuOpen, rootRef: helpMenuRef } = usePopover()
 
 // Diff mode: compares the current document against a second, pasted-in JSON doc
 const isDiffMode = ref(false)
@@ -575,7 +555,6 @@ onMounted(async () => {
   initLocale()
   initHistory()
   document.addEventListener('fullscreenchange', handleFullscreenChange)
-  document.addEventListener('click', handleClickOutsideMenus)
 
   // A share link in the URL hash takes priority over the last locally saved document
   let loadedFromShare = false
@@ -601,38 +580,37 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
-  document.removeEventListener('click', handleClickOutsideMenus)
 })
 </script>
 
 <template>
   <div class="flex h-screen flex-col bg-ink text-parchment">
     <header class="flex items-center justify-between border-b border-surface-hair bg-surface px-5 py-3">
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <span class="flex h-9 w-9 items-center justify-center rounded bg-key/15 border border-key/30">
           <Logo :size="22" />
         </span>
         <div class="leading-tight">
-          <h1 class="font-mono text-sm font-bold uppercase tracking-wide text-parchment">{{ t('header.title') }}</h1>
+          <h1 class="text-sm font-bold uppercase tracking-wide text-parchment">{{ t('header.title') }}</h1>
           <p class="text-xs text-muted">{{ t('header.subtitle') }}</p>
         </div>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
         <div class="flex items-center gap-2 text-xs">
           <template v-if="!isEmpty">
-            <span v-if="liveValidation.valid" class="flex items-center gap-1.5 font-mono uppercase tracking-wide text-string">
+            <span v-if="liveValidation.valid" class="flex items-center gap-1.5 uppercase tracking-wide text-string">
               <CheckCircle2 class="h-4 w-4" aria-hidden="true" />
               {{ t('status.valid') }}
             </span>
-            <span v-else class="flex items-center gap-1.5 font-mono uppercase tracking-wide text-boolean">
+            <span v-else class="flex items-center gap-1.5 uppercase tracking-wide text-boolean">
               <XCircle class="h-4 w-4" aria-hidden="true" />
               {{ t('status.invalid') }}
             </span>
           </template>
         </div>
         <div class="h-5 w-px bg-surface-hair" aria-hidden="true" />
-        <div class="flex items-center rounded border border-surface-hair p-0.5 text-xs" :aria-label="t('lang.label')">
-          <button v-for="opt in localeOptions" :key="opt.code" type="button" class="rounded px-2 py-1 transition"
+        <div class="flex items-center rounded-full border border-surface-hair p-0.5 text-xs" :aria-label="t('lang.label')">
+          <button v-for="opt in localeOptions" :key="opt.code" type="button" class="rounded-full px-2 py-1 transition"
             :class="locale === opt.code ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
             :aria-pressed="locale === opt.code" :lang="opt.code" @click="handleLocaleSelect(opt.code)">
             {{ opt.code.toUpperCase() }}
@@ -640,21 +618,21 @@ onUnmounted(() => {
         </div>
         <div class="relative" ref="themeMenuRef">
           <button type="button"
-            class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+            class="flex h-8 w-8 items-center justify-center rounded-full border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="Theme" aria-label="Theme" :aria-expanded="themeMenuOpen" @click="themeMenuOpen = !themeMenuOpen">
             <Flower class="h-4 w-4" aria-hidden="true" />
           </button>
           <div v-if="themeMenuOpen"
-            class="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel font-mono">
+            class="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel">
             <div class="flex items-center justify-between border-b border-surface-hair px-3 py-2">
               <span class="text-[10.5px] uppercase tracking-wide text-muted">Mode</span>
-              <div class="flex items-center rounded border border-surface-hair p-0.5 text-xs">
-                <button type="button" class="flex items-center gap-1 rounded px-2 py-1 transition"
+              <div class="flex items-center rounded-full border border-surface-hair p-0.5 text-xs">
+                <button type="button" class="flex items-center gap-1 rounded-full px-2 py-1 transition"
                   :class="theme === 'dark' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
                   :aria-pressed="theme === 'dark'" @click="setTheme('dark')">
                   <Moon class="h-3 w-3" aria-hidden="true" />
                 </button>
-                <button type="button" class="flex items-center gap-1 rounded px-2 py-1 transition"
+                <button type="button" class="flex items-center gap-1 rounded-full px-2 py-1 transition"
                   :class="theme === 'light' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
                   :aria-pressed="theme === 'light'" @click="setTheme('light')">
                   <Sun class="h-3 w-3" aria-hidden="true" />
@@ -664,7 +642,7 @@ onUnmounted(() => {
             <div class="p-1">
               <p class="px-2 py-1 text-[10.5px] uppercase tracking-wide text-muted">Theme</p>
               <button v-for="opt in themePresetOptions" :key="opt.id" type="button"
-                class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
+                class="flex w-full items-center gap-2 rounded-full px-2 py-1.5 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
                 :aria-pressed="preset === opt.id" @click="setPreset(opt.id)">
                 <span class="h-2.5 w-2.5 shrink-0 rounded-full" :style="{ background: opt.swatch }" aria-hidden="true" />
                 {{ opt.label }}
@@ -674,7 +652,7 @@ onUnmounted(() => {
             <div class="border-t border-surface-hair p-1">
               <p class="px-2 py-1 text-[10.5px] uppercase tracking-wide text-muted">Code Color</p>
               <button v-for="opt in codeColorSchemeOptions" :key="opt.id" type="button"
-                class="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
+                class="flex w-full items-center gap-2 rounded-full px-2 py-1.5 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
                 :aria-pressed="codeColorScheme === opt.id" @click="setCodeColorScheme(opt.id)">
                 <span class="flex shrink-0 items-center gap-0.5" aria-hidden="true">
                   <span v-for="swatch in opt.swatches" :key="swatch" class="h-2 w-2 rounded-full" :style="{ background: swatch }" />
@@ -698,13 +676,13 @@ onUnmounted(() => {
                 <span class="text-xs text-muted">Size</span>
                 <div class="flex items-center gap-1">
                   <button type="button"
-                    class="flex h-6 w-6 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key disabled:cursor-not-allowed disabled:opacity-30"
+                    class="flex h-6 w-6 items-center justify-center rounded-full border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key disabled:cursor-not-allowed disabled:opacity-30"
                     :disabled="fontSize <= FONT_SIZE_MIN" aria-label="Decrease font size" @click="setFontSize(fontSize - 1)">
                     <Minus class="h-3 w-3" aria-hidden="true" />
                   </button>
-                  <span class="w-9 text-center font-mono text-xs text-parchment">{{ fontSize }}px</span>
+                  <span class="w-9 text-center text-xs text-parchment">{{ fontSize }}px</span>
                   <button type="button"
-                    class="flex h-6 w-6 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key disabled:cursor-not-allowed disabled:opacity-30"
+                    class="flex h-6 w-6 items-center justify-center rounded-full border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key disabled:cursor-not-allowed disabled:opacity-30"
                     :disabled="fontSize >= FONT_SIZE_MAX" aria-label="Increase font size" @click="setFontSize(fontSize + 1)">
                     <Plus class="h-3 w-3" aria-hidden="true" />
                   </button>
@@ -714,7 +692,7 @@ onUnmounted(() => {
           </div>
         </div>
         <button type="button"
-          class="flex h-8 w-8 items-center justify-center rounded border transition"
+          class="flex h-8 w-8 items-center justify-center rounded-full border transition"
           :class="isDiffMode ? 'border-key/50 bg-key/20 text-key' : 'border-surface-hair text-parchment hover:border-key/50 hover:text-key'"
           title="Compare two JSON documents" aria-label="Compare two JSON documents" :aria-pressed="isDiffMode"
           @click="isDiffMode = !isDiffMode">
@@ -722,7 +700,7 @@ onUnmounted(() => {
         </button>
         <div class="relative" ref="historyMenuRef">
           <button type="button"
-            class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+            class="flex h-8 w-8 items-center justify-center rounded-full border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="Document history" aria-label="Document history" :aria-expanded="historyMenuOpen"
             @click="historyMenuOpen = !historyMenuOpen">
             <History class="h-4 w-4" aria-hidden="true" />
@@ -730,9 +708,9 @@ onUnmounted(() => {
           <div v-if="historyMenuOpen"
             class="absolute right-0 top-full z-20 mt-1 w-80 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel">
             <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
-              <span class="font-mono text-[11px] uppercase tracking-wide text-muted">History</span>
+              <span class="text-[11px] uppercase tracking-wide text-muted">History</span>
               <button v-if="historyEntries.length" type="button"
-                class="flex items-center gap-1 text-[11px] text-muted transition hover:text-boolean"
+                class="flex items-center gap-1 text-[11px] text-muted transition hover:text-boolean rounded-full"
                 @click="clearHistory">
                 <Trash class="h-3 w-3" aria-hidden="true" />
                 Clear
@@ -744,12 +722,12 @@ onUnmounted(() => {
               </li>
               <li v-for="entry in historyEntries" :key="entry.id"
                 class="group flex items-start gap-2 border-b border-surface-hair/50 px-3 py-2 last:border-b-0 hover:bg-key/10">
-                <button type="button" class="min-w-0 flex-1 text-left" @click="handleRestoreHistory(entry.content)">
+                <button type="button" class="min-w-0 flex-1 text-left rounded-full" @click="handleRestoreHistory(entry.content)">
                   <p class="truncate font-mono text-xs text-parchment">{{ entry.preview }}</p>
                   <p class="text-[10px] text-muted">{{ formatHistoryTime(entry.savedAt) }}</p>
                 </button>
                 <button type="button"
-                  class="mt-0.5 shrink-0 rounded p-0.5 text-muted opacity-0 transition hover:text-boolean group-hover:opacity-100"
+                  class="mt-0.5 shrink-0 rounded-full p-0.5 text-muted opacity-0 transition hover:text-boolean group-hover:opacity-100"
                   title="Remove" @click="removeHistoryEntry(entry.id)">
                   <Trash class="h-3.5 w-3.5" aria-hidden="true" />
                 </button>
@@ -759,27 +737,27 @@ onUnmounted(() => {
         </div>
         <div class="relative" ref="moreMenuRef">
           <button type="button"
-            class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+            class="flex h-8 w-8 items-center justify-center rounded-full border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="More" aria-label="More options" :aria-expanded="moreMenuOpen" @click="moreMenuOpen = !moreMenuOpen">
             <Ellipsis class="h-4 w-4" aria-hidden="true" />
           </button>
           <div v-if="moreMenuOpen"
-            class="absolute right-0 top-full z-20 mt-1 w-56 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel font-mono">
+            class="absolute right-0 top-full z-20 mt-1 w-56 overflow-hidden rounded border border-surface-hair bg-surface-raised p-1 shadow-panel">
             <button type="button"
-              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key rounded-full"
               @click="toggleFullscreen(); moreMenuOpen = false">
               <Minimize2 v-if="isFullscreen" class="h-3.5 w-3.5" aria-hidden="true" />
               <Maximize2 v-else class="h-3.5 w-3.5" aria-hidden="true" />
               {{ isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen' }}
             </button>
             <button type="button"
-              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition enabled:hover:bg-key/10 enabled:hover:text-key disabled:cursor-not-allowed disabled:opacity-40"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition enabled:hover:bg-key/10 enabled:hover:text-key disabled:cursor-not-allowed disabled:opacity-40 rounded-full"
               :disabled="isEmpty || isSharing" @click="handleShare(); moreMenuOpen = false">
               <Share class="h-3.5 w-3.5" aria-hidden="true" />
               Copy shareable link
             </button>
             <button type="button"
-              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition enabled:hover:bg-key/10 enabled:hover:text-key disabled:cursor-not-allowed disabled:opacity-40"
+              class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition enabled:hover:bg-key/10 enabled:hover:text-key disabled:cursor-not-allowed disabled:opacity-40 rounded-full"
               :disabled="isEmpty" @click="handleSaveToHistory(); moreMenuOpen = false">
               <Bookmark class="h-3.5 w-3.5" aria-hidden="true" />
               Save to history
@@ -788,15 +766,15 @@ onUnmounted(() => {
         </div>
         <div class="relative" ref="helpMenuRef">
           <button type="button"
-            class="flex h-8 w-8 items-center justify-center rounded border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
+            class="flex h-8 w-8 items-center justify-center rounded-full border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="Help" aria-label="Help" :aria-expanded="helpMenuOpen" @click="helpMenuOpen = !helpMenuOpen">
             <CircleHelp class="h-4 w-4" aria-hidden="true" />
           </button>
           <div v-if="helpMenuOpen"
-            class="absolute right-0 top-full z-20 mt-1 max-h-[75vh] w-80 overflow-y-auto rounded border border-surface-hair bg-surface-raised shadow-panel font-mono">
+            class="absolute right-0 top-full z-20 mt-1 max-h-[75vh] w-80 overflow-y-auto rounded border border-surface-hair bg-surface-raised shadow-panel">
             <div class="sticky top-0 flex items-center justify-between border-b border-surface-hair bg-surface-raised px-3 py-2">
               <span class="text-[11px] uppercase tracking-wide text-muted">{{ t('help.title') }}</span>
-              <button type="button" class="rounded p-0.5 text-muted transition hover:text-key" aria-label="Close"
+              <button type="button" class="rounded-full p-0.5 text-muted transition hover:text-key" aria-label="Close"
                 @click="helpMenuOpen = false">
                 <X class="h-3.5 w-3.5" aria-hidden="true" />
               </button>
@@ -824,20 +802,20 @@ onUnmounted(() => {
 
     <main v-if="isDiffMode" class="flex min-h-0 flex-1 flex-col gap-2 p-4">
       <div class="flex items-center justify-between rounded-lg border border-surface-hair bg-surface px-3 py-2">
-        <div class="flex items-center gap-4 font-mono text-[11px] uppercase tracking-wide text-muted">
+        <div class="flex items-center gap-4 text-[11px] uppercase tracking-wide text-muted">
           <span>Left: current document</span>
           <span>Right: paste or upload a document to compare</span>
         </div>
         <div class="flex items-center gap-2">
           <input ref="diffFileInputRef" type="file" accept=".json,.txt" class="hidden" @change="handleDiffFileChange" />
           <button type="button"
-            class="flex items-center gap-1 rounded border border-surface-hair px-2 py-1 text-xs text-parchment transition hover:border-key/50 hover:text-key"
+            class="flex items-center gap-1 rounded-full border border-surface-hair px-2 py-1 text-xs text-parchment transition hover:border-key/50 hover:text-key"
             @click="diffFileInputRef?.click()">
             <Upload class="h-3.5 w-3.5" aria-hidden="true" />
             Upload right side
           </button>
           <button type="button"
-            class="flex items-center gap-1 rounded border border-surface-hair px-2 py-1 text-xs text-parchment transition hover:border-key/50 hover:text-key"
+            class="flex items-center gap-1 rounded-full border border-surface-hair px-2 py-1 text-xs text-parchment transition hover:border-key/50 hover:text-key"
             @click="formatDiffCompareText">
             <WandSparkles class="h-3.5 w-3.5" aria-hidden="true" />
             Format right side
@@ -867,7 +845,7 @@ onUnmounted(() => {
           <div>
             <input ref="fileInputRef" type="file" accept=".json,.txt" class="hidden" @change="handleFileChange" />
             <button type="button"
-              class="flex items-center gap-1 rounded border border-surface-hair bg-surface-raised px-2 py-0.5 text-[11px] text-parchment transition hover:border-key/50 hover:text-key"
+              class="flex items-center gap-1 rounded-full border border-surface-hair bg-surface-raised px-2 py-0.5 text-[11px] text-parchment transition hover:border-key/50 hover:text-key"
               title="Upload JSON File" @click="triggerFileUpload">
               <Upload class="h-3 w-3 text-key" />
               <span>Upload File</span>
@@ -903,7 +881,7 @@ onUnmounted(() => {
           <!-- Folder-tab view switcher -->
           <div class="flex items-end gap-0.5 overflow-x-auto bg-surface-raised px-2 pt-2">
             <button v-for="tab in viewTabs" :key="tab.id" type="button"
-              class="flex shrink-0 items-center gap-1.5 px-3 pb-2 pt-1.5 font-mono text-[10.5px] uppercase tracking-wide transition [clip-path:polygon(10%_0,90%_0,100%_100%,0%_100%)]"
+              class="flex shrink-0 items-center gap-1.5 px-3 pb-2 pt-1.5 text-[10.5px] uppercase tracking-wide transition [clip-path:polygon(10%_0,90%_0,100%_100%,0%_100%)]"
               :class="viewMode === tab.id ? 'bg-surface font-bold text-key' : 'bg-surface-raised text-muted hover:text-parchment'"
               :aria-pressed="viewMode === tab.id" @click="viewMode = tab.id">
               <component :is="tab.icon" class="h-3 w-3" aria-hidden="true" />
@@ -915,33 +893,33 @@ onUnmounted(() => {
               <Search class="absolute left-2 h-3.5 w-3.5 text-muted pointer-events-none" />
               <input v-model="searchQuery" type="text" placeholder="Find field..."
                 class="w-full rounded border border-surface-hair bg-surface-raised pl-7 pr-6 py-0.5 text-xs text-parchment placeholder-muted/60 focus:border-key/50 focus:outline-none" />
-              <button v-if="searchQuery" type="button" class="absolute right-1.5 text-muted hover:text-parchment"
+              <button v-if="searchQuery" type="button" class="absolute right-1.5 text-muted hover:text-parchment rounded-full"
                 @click="searchQuery = ''">
                 <X class="h-3 w-3" />
               </button>
             </div>
             <div class="flex items-center gap-1 shrink-0">
               <button type="button"
-                class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
+                class="flex items-center gap-1 rounded-full border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
                 title="Sort Keys" @click="handleSortToggle">
                 <ArrowUpDown class="h-3.5 w-3.5" />
               </button>
 
               <button type="button"
-                class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
+                class="flex items-center gap-1 rounded-full border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
                 title="Copy Formatted JSON" @click="handleCopy()">
                 <Check v-if="treeCopied" class="h-3.5 w-3.5 text-key" />
                 <Copy v-else class="h-3.5 w-3.5" />
               </button>
 
               <button type="button"
-                class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
+                class="flex items-center gap-1 rounded-full border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
                 title="Download Formatted JSON" @click="handleDownload()">
                 <Download class="h-3.5 w-3.5" />
               </button>
 
               <button type="button"
-                class="flex items-center gap-1 rounded border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-boolean/50 hover:text-boolean"
+                class="flex items-center gap-1 rounded-full border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-boolean/50 hover:text-boolean"
                 title="Clear Panel" @click="handleClearTreeOnly">
                 <Trash2 class="h-3.5 w-3.5" />
               </button>
@@ -949,13 +927,13 @@ onUnmounted(() => {
           </div>
           <div class="flex items-center gap-2 border-t border-surface-hair/60 bg-surface-raised/40 px-3 py-1">
             <Code class="h-3.5 w-3.5 text-key shrink-0" />
-            <span class="text-[11px] font-mono font-medium text-key">JMESPath:</span>
+            <span class="text-[11px] font-medium text-key">JMESPath:</span>
 
             <div class="relative flex-1">
               <input v-model="jmesQuery" type="text" placeholder="e.g. medical_histories[*].value[] or code"
                 class="w-full rounded border border-surface-hair bg-surface pl-2 pr-6 py-0.5 font-mono text-xs text-parchment placeholder-muted/40 focus:border-key/50 focus:outline-none" />
               <button v-if="jmesQuery" type="button"
-                class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-parchment"
+                class="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-parchment rounded-full"
                 @click="jmesQuery = ''">
                 <X class="h-3 w-3" />
               </button>
@@ -965,13 +943,13 @@ onUnmounted(() => {
 
         <!-- JMESPath Error Box -->
         <div v-if="jmesError"
-          class="bg-boolean/10 border-b border-boolean/30 px-3 py-1.5 text-xs text-boolean font-mono">
+          class="bg-boolean/10 border-b border-boolean/30 px-3 py-1.5 text-xs text-boolean">
           JMESPath Error: {{ jmesError }}
         </div>
 
         <!-- Panel Content Display Based on View Mode -->
         <div class="min-h-0 flex-1 overflow-auto p-2">
-          <div v-if="isTreeCleared" class="p-2 font-mono text-xs text-muted">
+          <div v-if="isTreeCleared" class="p-2 text-xs text-muted">
             View panel cleared.
           </div>
 

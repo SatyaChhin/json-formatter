@@ -37,7 +37,7 @@ const result = computed(() => {
 
 <template>
   <div class="flex h-full flex-col gap-2 p-2">
-    <div class="flex items-center justify-between font-mono">
+    <div class="flex items-center justify-between">
       <span class="text-[11px] uppercase tracking-wide text-muted">JSON Schema</span>
       <span
         v-if="result"
@@ -62,7 +62,7 @@ const result = computed(() => {
     </p>
     <ul
       v-else-if="result && !result.valid"
-      class="max-h-40 flex-none overflow-auto rounded border border-boolean/30 bg-boolean/5 p-2 font-mono text-xs text-boolean"
+      class="max-h-40 flex-none overflow-auto rounded border border-boolean/30 bg-boolean/5 p-2 text-xs text-boolean"
     >
       <li v-for="(err, idx) in result.errors" :key="idx" class="py-0.5">{{ err }}</li>
     </ul>

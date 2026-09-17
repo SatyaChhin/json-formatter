@@ -5,7 +5,7 @@ import { FONT_SIZE_DEFAULT, FONT_SIZE_MAX, FONT_SIZE_MIN, fontFamilyOptions, typ
 const FAMILY_STORAGE_KEY = 'json-formatter:font-family'
 const SIZE_STORAGE_KEY = 'json-formatter:font-size'
 const VALID_FAMILIES: FontFamily[] = fontFamilyOptions.map((opt) => opt.id)
-const DEFAULT_FAMILY: FontFamily = 'google-sans'
+const DEFAULT_FAMILY: FontFamily = 'plex-mono'
 
 function stackFor(family: FontFamily): string {
   return fontFamilyOptions.find((opt) => opt.id === family)?.stack ?? stackFor(DEFAULT_FAMILY)

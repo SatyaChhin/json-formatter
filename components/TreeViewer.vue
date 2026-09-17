@@ -159,7 +159,7 @@ function handleCopyPath(e?: Event) {
       <!-- Copy Path (visible on row hover) -->
       <button
         type="button"
-        class="ml-auto hidden shrink-0 rounded p-0.5 text-muted opacity-0 transition hover:text-key group-hover:block group-hover:opacity-100"
+        class="ml-auto hidden shrink-0 rounded-full p-0.5 text-muted opacity-0 transition hover:text-key group-hover:block group-hover:opacity-100"
         title="Copy path"
         @click="handleCopyPath"
       >

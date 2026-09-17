@@ -34,7 +34,7 @@
      applies the same var through an inline style). Kept as plain :root
      properties (not part of the theme-preset system above) since font
      choice is a reading preference, independent of color theme/preset. */
-  --font-mono-active: "Google Sans", "Noto Sans Khmer", ui-sans-serif, system-ui, sans-serif;
+  --font-mono-active: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
   --font-size-content: 13px;
 }
 
