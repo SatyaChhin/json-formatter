@@ -38,12 +38,12 @@ export function useClipboard() {
     }
   }
 
-  function downloadJson(text: string, filename = 'data.json') {
+  function downloadJson(text: string, filename = 'data.json', mimeType = 'application/json') {
     if (!text.trim()) {
       pushToast(t('toast.downloadEmpty'), 'info')
       return
     }
-    const blob = new Blob([text], { type: 'application/json' })
+    const blob = new Blob([text], { type: mimeType })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url

@@ -3,6 +3,27 @@
 export const en = {
   'header.title': 'JSON Formatter',
   'header.subtitle': 'Runs entirely in your browser',
+  'header.titleSql': 'SQL Formatter',
+
+  'tool.label': 'Tool',
+  'tool.json': 'JSON',
+  'tool.sql': 'SQL',
+
+  'sql.input': 'SQL input',
+  'sql.output': 'Formatted SQL',
+  'sql.outputMinified': 'Minified SQL',
+  'sql.dialect': 'Dialect',
+  'sql.keywordCase': 'Keywords',
+  'sql.case.upper': 'UPPER',
+  'sql.case.lower': 'lower',
+  'sql.case.preserve': 'Keep',
+  'sql.indent': 'Indent',
+  'sql.indent.tab': 'Tab',
+  'sql.upload': 'Upload File',
+  'sql.drop': 'Drop SQL file to load',
+  'sql.useOutput': 'Replace input',
+  'sql.emptyState': 'Paste or type SQL on the left — the formatted result appears here.',
+  'sql.error': 'Could not format this SQL',
 
   'status.valid': 'Valid JSON',
   'status.invalid': 'Invalid JSON',
@@ -58,6 +79,7 @@ export const en = {
   'help.group.historySharing': 'History & sharing',
   'help.group.appearance': 'Appearance',
   'help.group.other': 'Other',
+  'help.group.sql': 'SQL formatter',
 
   'help.tree.label': 'Tree',
   'help.tree.desc': 'Expandable/collapsible tree of the parsed JSON, with per-node copy, download, and copy-path.',
@@ -126,6 +148,15 @@ export const en = {
   'help.language.desc': 'Switches the UI between English and Khmer.',
   'help.fullscreen.label': 'Fullscreen',
   'help.fullscreen.desc': 'Expands the app to fill the browser window.',
+
+  'help.sqlFormat.label': 'Format SQL',
+  'help.sqlFormat.desc': 'Switch the header to SQL, paste a query, and the formatted result updates live as you type.',
+  'help.sqlDialect.label': 'Dialect',
+  'help.sqlDialect.desc': 'PostgreSQL, MySQL, SQL Server, Oracle, SQLite, BigQuery and more — each understands its own syntax.',
+  'help.sqlOptions.label': 'Keyword case & indent',
+  'help.sqlOptions.desc': 'Uppercase, lowercase, or keep keywords as written; indent with 2 spaces, 4 spaces, or tabs.',
+  'help.sqlMinify.label': 'Minify SQL',
+  'help.sqlMinify.desc': 'Collapses the query onto one line, keeping string literals intact.',
 } as const
 
 export type TranslationKey = keyof typeof en

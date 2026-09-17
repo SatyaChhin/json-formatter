@@ -4,6 +4,27 @@ import type { TranslationKey } from './en'
 export const km = {
   'header.title': 'កម្មវិធីរៀបចំទម្រង់ JSON',
   'header.subtitle': 'ដំណើរការទាំងស្រុងក្នុងកម្មវិធីរុករករបស់អ្នក — គ្មានទិន្នន័យផ្ទុកឡើងទេ',
+  'header.titleSql': 'កម្មវិធីរៀបចំទម្រង់ SQL',
+
+  'tool.label': 'ឧបករណ៍',
+  'tool.json': 'JSON',
+  'tool.sql': 'SQL',
+
+  'sql.input': 'បញ្ចូល SQL',
+  'sql.output': 'SQL ដែលបានរៀបទម្រង់',
+  'sql.outputMinified': 'SQL ដែលបានបង្រួម',
+  'sql.dialect': 'ប្រភេទ',
+  'sql.keywordCase': 'ពាក្យគន្លឹះ',
+  'sql.case.upper': 'UPPER',
+  'sql.case.lower': 'lower',
+  'sql.case.preserve': 'ដូចដើម',
+  'sql.indent': 'ចូលបន្ទាត់',
+  'sql.indent.tab': 'Tab',
+  'sql.upload': 'ផ្ទុកឯកសារឡើង',
+  'sql.drop': 'ទម្លាក់ឯកសារ SQL ដើម្បីផ្ទុក',
+  'sql.useOutput': 'ជំនួសការបញ្ចូល',
+  'sql.emptyState': 'បិទភ្ជាប់ ឬវាយ SQL នៅខាងឆ្វេង — លទ្ធផលដែលបានរៀបទម្រង់នឹងបង្ហាញនៅទីនេះ។',
+  'sql.error': 'មិនអាចរៀបទម្រង់ SQL នេះបានទេ',
 
   'status.valid': 'JSON ត្រឹមត្រូវ',
   'status.invalid': 'JSON មិនត្រឹមត្រូវ',
@@ -56,6 +77,7 @@ export const km = {
   'help.group.historySharing': 'ប្រវត្តិ និងចែករំលែក',
   'help.group.appearance': 'រូបរាង',
   'help.group.other': 'ផ្សេងៗ',
+  'help.group.sql': 'កម្មវិធីរៀបចំទម្រង់ SQL',
 
   'help.tree.label': 'មែកធាង',
   'help.tree.desc': 'ទិដ្ឋភាពមែកធាងដែលអាចពន្លា/បិទបាននៃ JSON ដែលបានញែក ជាមួយប៊ូតុងចម្លង ទាញយក និងចម្លងផ្លូវសម្រាប់ថ្នាំងនីមួយៗ។',
@@ -124,4 +146,13 @@ export const km = {
   'help.language.desc': 'ប្តូរចំណុចប្រទាក់រវាងភាសាអង់គ្លេស និងខ្មែរ។',
   'help.fullscreen.label': 'អេក្រង់ពេញ',
   'help.fullscreen.desc': 'ពង្រីកកម្មវិធីឲ្យពេញអេក្រង់កម្មវិធីរុករក។',
+
+  'help.sqlFormat.label': 'រៀបទម្រង់ SQL',
+  'help.sqlFormat.desc': 'ប្តូរទៅ SQL នៅផ្នែកខាងលើ បិទភ្ជាប់សំណួរ ហើយលទ្ធផលដែលបានរៀបទម្រង់នឹងធ្វើបច្ចុប្បន្នភាពភ្លាមៗពេលអ្នកវាយ។',
+  'help.sqlDialect.label': 'ប្រភេទ SQL',
+  'help.sqlDialect.desc': 'PostgreSQL, MySQL, SQL Server, Oracle, SQLite, BigQuery និងច្រើនទៀត — នីមួយៗយល់វាក្យសម្ព័ន្ធរបស់ខ្លួន។',
+  'help.sqlOptions.label': 'ទម្រង់អក្សរពាក្យគន្លឹះ និងការចូលបន្ទាត់',
+  'help.sqlOptions.desc': 'អក្សរធំ អក្សរតូច ឬរក្សាពាក្យគន្លឹះដូចដើម; ចូលបន្ទាត់ដោយ 2 ដកឃ្លា 4 ដកឃ្លា ឬ Tab។',
+  'help.sqlMinify.label': 'បង្រួម SQL',
+  'help.sqlMinify.desc': 'បង្រួមសំណួរឲ្យនៅលើបន្ទាត់តែមួយ ដោយរក្សាអក្សរក្នុងសញ្ញាសម្រង់ដដែល។',
 } satisfies Record<TranslationKey, string>

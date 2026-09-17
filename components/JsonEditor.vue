@@ -11,8 +11,9 @@ const props = withDefaults(
   defineProps<{
     modelValue: string
     readOnly?: boolean
+    language?: 'json' | 'sql'
   }>(),
-  { readOnly: false }
+  { readOnly: false, language: 'json' }
 )
 
 const emit = defineEmits<{
@@ -80,6 +81,13 @@ function defineCustomThemes(monaco: typeof Monaco, scheme: CodeColorScheme) {
       { token: 'delimiter.bracket.json', foreground: '8A939A' },
       { token: 'delimiter.array.json', foreground: '8A939A' },
       { token: 'delimiter.comma.json', foreground: '8A939A' },
+      { token: 'keyword.sql', foreground: hex.dark.key, fontStyle: 'bold' },
+      { token: 'operator.sql', foreground: hex.dark.keyword },
+      { token: 'predefined.sql', foreground: hex.dark.keyword },
+      { token: 'string.sql', foreground: hex.dark.value },
+      { token: 'number.sql', foreground: hex.dark.number },
+      { token: 'comment.sql', foreground: '6B757B', fontStyle: 'italic' },
+      { token: 'comment.quote.sql', foreground: '6B757B', fontStyle: 'italic' },
     ],
     colors: {
       'editor.background': '#14181A',
@@ -106,6 +114,13 @@ function defineCustomThemes(monaco: typeof Monaco, scheme: CodeColorScheme) {
       { token: 'delimiter.bracket.json', foreground: '5B6266' },
       { token: 'delimiter.array.json', foreground: '5B6266' },
       { token: 'delimiter.comma.json', foreground: '5B6266' },
+      { token: 'keyword.sql', foreground: hex.light.key, fontStyle: 'bold' },
+      { token: 'operator.sql', foreground: hex.light.keyword },
+      { token: 'predefined.sql', foreground: hex.light.keyword },
+      { token: 'string.sql', foreground: hex.light.value },
+      { token: 'number.sql', foreground: hex.light.number },
+      { token: 'comment.sql', foreground: '8A9196', fontStyle: 'italic' },
+      { token: 'comment.quote.sql', foreground: '8A9196', fontStyle: 'italic' },
     ],
     colors: {
       'editor.background': '#FFFFFF',
@@ -131,7 +146,7 @@ onMounted(async () => {
 
   const editor = monaco.editor.create(containerRef.value, {
     value: props.modelValue,
-    language: 'json',
+    language: props.language,
     theme: themeName(theme.value),
     automaticLayout: false, // we drive layout via ResizeObserver instead
     minimap: { enabled: false },
@@ -215,5 +230,5 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="containerRef" class="h-full w-full" role="textbox" aria-label="JSON editor" />
+  <div ref="containerRef" class="h-full w-full" role="textbox" :aria-label="language === 'sql' ? 'SQL editor' : 'JSON editor'" />
 </template>

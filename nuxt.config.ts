@@ -26,7 +26,7 @@ export default defineNuxtConfig({
         { name: 'description', content: 'Format, validate, and inspect JSON in your browser — entirely client-side, nothing leaves your machine.' },
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        { rel: 'icon', type: 'image/png', href: '/npca_logo.png' },
       ],
     },
   },

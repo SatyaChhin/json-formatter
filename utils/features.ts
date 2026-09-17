@@ -39,6 +39,15 @@ export const featureGroups: FeatureGroup[] = [
     ],
   },
   {
+    titleKey: 'help.group.sql',
+    items: [
+      { labelKey: 'help.sqlFormat.label', descKey: 'help.sqlFormat.desc' },
+      { labelKey: 'help.sqlDialect.label', descKey: 'help.sqlDialect.desc' },
+      { labelKey: 'help.sqlOptions.label', descKey: 'help.sqlOptions.desc' },
+      { labelKey: 'help.sqlMinify.label', descKey: 'help.sqlMinify.desc' },
+    ],
+  },
+  {
     titleKey: 'help.group.searchFilter',
     items: [
       { labelKey: 'help.search.label', descKey: 'help.search.desc' },
