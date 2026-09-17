@@ -1,5 +1,4 @@
 // composables/useClipboard.ts
-import { ref, type Ref } from 'vue'
 import { useLocale } from '~/composables/useLocale'
 import { useDownloadDialog } from '~/composables/useDownloadDialog'
 import type { ToastMessage } from '~/types/json'
@@ -15,7 +14,8 @@ let toastCounter = 0
 export function useClipboard() {
   const { t } = useLocale()
   const { requestFilename } = useDownloadDialog()
-  const toasts: Ref<ToastMessage[]> = ref([])
+  // Shared so any component (e.g. <CopyMenu>) can raise toasts rendered by app.vue
+  const toasts = useState<ToastMessage[]>('toasts', () => [])
 
   function pushToast(text: string, variant: ToastMessage['variant'] = 'info', durationMs = 2400) {
     const id = ++toastCounter
@@ -25,14 +25,24 @@ export function useClipboard() {
     }, durationMs)
   }
 
-  async function copyToClipboard(text: string): Promise<boolean> {
+  async function copyToClipboard(text: string, html?: string, successMessage = t('toast.copied')): Promise<boolean> {
     if (!text.trim()) {
       pushToast(t('toast.copyEmpty'), 'info')
       return false
     }
     try {
-      await navigator.clipboard.writeText(text)
-      pushToast(t('toast.copied'), 'success')
+      if (html && typeof ClipboardItem !== 'undefined') {
+        // Rich copy: apps that understand HTML paste the styled version, others get plain text
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: 'text/html' }),
+            'text/plain': new Blob([text], { type: 'text/plain' }),
+          }),
+        ])
+      } else {
+        await navigator.clipboard.writeText(text)
+      }
+      pushToast(successMessage, 'success')
       return true
     } catch {
       pushToast(t('toast.copyFailed'), 'error')

@@ -3,7 +3,6 @@ import { computed, onMounted, ref, watch } from 'vue'
 import {
   WandSparkles,
   Minimize2,
-  Copy,
   Download,
   Trash2,
   Upload,
@@ -21,7 +20,6 @@ import {
 } from '~/utils/sql'
 
 const emit = defineEmits<{
-  copy: [text: string]
   download: [text: string, filename: string]
 }>()
 
@@ -213,14 +211,7 @@ watch([dialect, keywordCase, indent], () => {
 
       <div class="mx-1 h-5 w-px bg-surface-hair" aria-hidden="true" />
 
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border border-surface-hair px-3 py-1 text-sm text-parchment transition hover:border-key/50 hover:text-key"
-        @click="emit('copy', output)"
-      >
-        <Copy class="h-4 w-4" aria-hidden="true" />
-        {{ t('toolbar.copy') }}
-      </button>
+      <CopyMenu :text="output" language="sql" />
 
       <button
         type="button"

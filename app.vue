@@ -9,7 +9,6 @@ import {
   Moon,
   FolderTree,
   ArrowUpDown,
-  Copy,
   Download,
   Trash2,
   Check,
@@ -49,6 +48,7 @@ import { sampleDatasets } from '~/utils/sampleData'
 import { jsonToYaml, rowsToCsv } from '~/utils/convert'
 import { encodeShareHash, decodeShareHash } from '~/utils/share'
 import { featureGroups } from '~/utils/features'
+import type { CopyLanguage } from '~/utils/copyFormats'
 import { localeOptions, themePresetOptions, codeColorSchemeOptions, fontFamilyOptions, FONT_SIZE_MIN, FONT_SIZE_MAX } from '~/types/i18n'
 import type { IndentSize, SampleDataset } from '~/types/json'
 import type { Locale, FontFamily } from '~/types/i18n'
@@ -102,7 +102,6 @@ const searchQuery = ref('')            // Search/Find field state
 const jmesQuery = ref('')              // JMESPath Query State
 const jmesError = ref<string | null>(null)
 const isTreeCleared = ref(false)
-const treeCopied = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const diffFileInputRef = ref<HTMLInputElement | null>(null)
 
@@ -455,14 +454,14 @@ function handleLoadSample(sample: SampleDataset) {
 }
 
 /** Text + suggested filename for whatever the active view tab is currently showing */
-function activeViewExport(): { text: string; filename: string } {
+function activeViewExport(): { text: string; filename: string; language: CopyLanguage } {
   switch (viewMode.value) {
     case 'yaml':
-      return { text: filteredYamlText.value, filename: 'data.yaml' }
+      return { text: filteredYamlText.value, filename: 'data.yaml', language: 'yaml' }
     case 'csv':
-      return { text: filteredCsvText.value, filename: 'data.csv' }
+      return { text: filteredCsvText.value, filename: 'data.csv', language: 'csv' }
     default:
-      return { text: filteredFormattedText.value, filename: 'data.json' }
+      return { text: filteredFormattedText.value, filename: 'data.json', language: 'json' }
   }
 }
 
@@ -472,10 +471,6 @@ function handleCopy(payload?: string) {
   if (!textToCopy) return
 
   copyToClipboard(textToCopy)
-  treeCopied.value = true
-  setTimeout(() => {
-    treeCopied.value = false
-  }, 1500)
 }
 
 /** 7. Download JSON Data */
@@ -827,13 +822,13 @@ onUnmounted(() => {
         </div>
       </div>
     </header>
-    <SqlFormatter v-if="tool === 'sql'" @copy="(text) => copyToClipboard(text)"
+    <SqlFormatter v-if="tool === 'sql'"
       @download="(text, filename) => downloadJson(text, filename, 'application/sql')" />
 
     <template v-else>
     <Toolbar :indent-size="options.indentSize" :sort-keys="options.sortKeys ?? false" :show-tree="showTree"
-      :can-download="canDownload || (!isEmpty && liveValidation.valid)" :samples="sampleDatasets" @format="runFormat"
-      @minify="runMinify" @clear="handleClear" @copy="handleCopy()" @download="handleDownload()"
+      :can-download="canDownload || (!isEmpty && liveValidation.valid)" :samples="sampleDatasets" :copy-text="activeViewExport().text" :copy-language="activeViewExport().language" @format="runFormat"
+      @minify="runMinify" @clear="handleClear" @download="handleDownload()"
       @load-sample="handleLoadSample" @toggle-tree="showTree = !showTree" @toggle-sort="handleSortToggle"
       @update:indent-size="handleIndentChange" @escape="handleEscape" @unescape="handleUnescape" />
 
@@ -946,12 +941,7 @@ onUnmounted(() => {
                 <ArrowUpDown class="h-3.5 w-3.5" />
               </button>
 
-              <button type="button"
-                class="flex items-center gap-1 rounded-full border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"
-                title="Copy Formatted JSON" @click="handleCopy()">
-                <Check v-if="treeCopied" class="h-3.5 w-3.5 text-key" />
-                <Copy v-else class="h-3.5 w-3.5" />
-              </button>
+              <CopyMenu variant="icon" align="right" :text="activeViewExport().text" :language="activeViewExport().language" />
 
               <button type="button"
                 class="flex items-center gap-1 rounded-full border border-surface-hair px-1.5 py-0.5 text-xs text-muted transition hover:border-key/50 hover:text-key"

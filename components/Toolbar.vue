@@ -2,7 +2,6 @@
 import {
   WandSparkles,
   Minimize2,
-  Copy,
   Trash2,
   Download,
   FileJson,
@@ -16,6 +15,7 @@ import {
 import { useLocale } from '~/composables/useLocale'
 import { usePopover } from '~/composables/usePopover'
 import type { IndentSize, SampleDataset } from '~/types/json'
+import type { CopyLanguage } from '~/utils/copyFormats'
 
 const props = defineProps<{
   indentSize: IndentSize
@@ -23,13 +23,14 @@ const props = defineProps<{
   showTree: boolean
   canDownload: boolean
   samples: SampleDataset[]
+  copyText: string
+  copyLanguage: CopyLanguage
 }>()
 
 const emit = defineEmits<{
   format: []
   minify: []
   clear: []
-  copy: []
   download: []
   'load-sample': [sample: SampleDataset]
   'toggle-tree': []
@@ -165,14 +166,7 @@ function pickSample(sample: SampleDataset) {
       </div>
     </div>
 
-    <button
-      type="button"
-      class="flex items-center gap-1.5 rounded-full border border-surface-hair px-3 py-1 text-sm text-parchment transition hover:border-key/50 hover:text-key"
-      @click="emit('copy')"
-    >
-      <Copy class="h-4 w-4" aria-hidden="true" />
-      {{ t('toolbar.copy') }}
-    </button>
+    <CopyMenu :text="props.copyText" :language="props.copyLanguage" />
 
     <button
       type="button"
