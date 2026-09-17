@@ -1,6 +1,7 @@
 // composables/useClipboard.ts
 import { ref, type Ref } from 'vue'
 import { useLocale } from '~/composables/useLocale'
+import { useDownloadDialog } from '~/composables/useDownloadDialog'
 import type { ToastMessage } from '~/types/json'
 
 let toastCounter = 0
@@ -13,6 +14,7 @@ let toastCounter = 0
  */
 export function useClipboard() {
   const { t } = useLocale()
+  const { requestFilename } = useDownloadDialog()
   const toasts: Ref<ToastMessage[]> = ref([])
 
   function pushToast(text: string, variant: ToastMessage['variant'] = 'info', durationMs = 2400) {
@@ -38,11 +40,14 @@ export function useClipboard() {
     }
   }
 
-  function downloadJson(text: string, filename = 'data.json', mimeType = 'application/json') {
+  async function downloadJson(text: string, defaultFilename = 'data.json', mimeType = 'application/json') {
     if (!text.trim()) {
       pushToast(t('toast.downloadEmpty'), 'info')
       return
     }
+    // Let the user rename the file first; null means they cancelled
+    const filename = await requestFilename(defaultFilename)
+    if (!filename) return
     const blob = new Blob([text], { type: mimeType })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')

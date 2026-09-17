@@ -6,6 +6,7 @@ import type {
   ValidationResult,
   IndentSize,
 } from '~/types/json'
+import { useDownloadDialog } from '~/composables/useDownloadDialog'
 
 function locateError(raw: string, message: string): ValidationError {
   const lineColMatch = message.match(/line (\d+) column (\d+)/i)
@@ -31,6 +32,7 @@ function locateError(raw: string, message: string): ValidationError {
 }
 
 export function useJsonFormatter() {
+  const { requestFilename } = useDownloadDialog()
   const state: Ref<EditorState> = ref({
     raw: '',
     formatted: '',
@@ -174,8 +176,11 @@ export function useJsonFormatter() {
   }
 
   /** Downloads the formatted JSON as a file */
-  function downloadJson(filename = 'data.json') {
+  async function downloadJson(defaultFilename = 'data.json') {
     if (!state.value.formatted || !state.value.isValid) return
+    // Let the user rename the file first; null means they cancelled
+    const filename = await requestFilename(defaultFilename)
+    if (!filename) return
 
     const blob = new Blob([state.value.formatted], { type: 'application/json' })
     const url = URL.createObjectURL(blob)

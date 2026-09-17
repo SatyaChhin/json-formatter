@@ -62,6 +62,11 @@ export const en = {
   'toast.downloadEmpty': 'Nothing to download yet',
   'toast.downloaded': 'Downloaded {filename}',
 
+  'download.title': 'Download file',
+  'download.filename': 'File name',
+  'download.cancel': 'Cancel',
+  'download.confirm': 'Download',
+
   'theme.toLight': 'Switch to light mode',
   'theme.toDark': 'Switch to dark mode',
 

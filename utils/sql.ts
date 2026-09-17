@@ -130,11 +130,3 @@ export function minifySql(source: string): string {
 
   return out.trim()
 }
-
-export const sampleSql = `select p.id, p.full_name, p.gender, c.claim_no, c.service_date, sum(ci.amount) as total_amount
-from patients p inner join claims c on c.patient_id = p.id
-left join claim_items ci on ci.claim_id = c.id
-where c.status = 'PENDING' and c.service_date >= '2026-01-01' -- current year only
-group by p.id, p.full_name, p.gender, c.claim_no, c.service_date
-having sum(ci.amount) > 100 order by total_amount desc limit 50;
-update claims set status = 'VERIFIED', verified_at = now() where claim_no in ('HEF-0001', 'NSSF-0042');`

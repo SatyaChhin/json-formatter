@@ -62,6 +62,11 @@ export const km = {
   'toast.downloadEmpty': 'មិនទាន់មានអ្វីត្រូវទាញយកទេ',
   'toast.downloaded': 'បានទាញយក {filename}',
 
+  'download.title': 'ទាញយកឯកសារ',
+  'download.filename': 'ឈ្មោះឯកសារ',
+  'download.cancel': 'បោះបង់',
+  'download.confirm': 'ទាញយក',
+
   'theme.toLight': 'ប្តូរទៅរបៀបភ្លឺ',
   'theme.toDark': 'ប្តូរទៅរបៀបងងឹត',
 

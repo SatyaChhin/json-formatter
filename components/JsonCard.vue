@@ -8,6 +8,9 @@ const props = defineProps<{
 }>()
 
 import { usePopover } from '~/composables/usePopover'
+import { useDownloadDialog } from '~/composables/useDownloadDialog'
+
+const { requestFilename } = useDownloadDialog()
 
 const emit = defineEmits<{
   toast: [text: string, variant: 'success' | 'error' | 'info']
@@ -264,13 +267,15 @@ async function handleCopyImage() {
 
 async function handleDownloadImage() {
   if (downloadState.value === 'busy') return
+  const filename = await requestFilename(`${slugify(title.value) || 'json-card'}.png`)
+  if (!filename) return
   downloadState.value = 'busy'
   try {
     const canvas = await renderCanvas()
     const url = URL.createObjectURL(await canvasToBlob(canvas))
     const link = document.createElement('a')
     link.href = url
-    link.download = `${slugify(title.value) || 'json-card'}.png`
+    link.download = filename
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

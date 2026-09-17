@@ -7,7 +7,6 @@ import {
   Download,
   Trash2,
   Upload,
-  FileCode2,
   ArrowLeftToLine,
   TriangleAlert,
 } from 'lucide-vue-next'
@@ -16,7 +15,6 @@ import { useLocale } from '~/composables/useLocale'
 import {
   formatSql,
   minifySql,
-  sampleSql,
   sqlDialectOptions,
   type SqlIndent,
   type SqlKeywordCase,
@@ -108,11 +106,6 @@ function handleDownload() {
 
 function handleClear() {
   input.value = ''
-  mode.value = 'format'
-}
-
-function loadSample() {
-  input.value = sampleSql
   mode.value = 'format'
 }
 
@@ -219,15 +212,6 @@ watch([dialect, keywordCase, indent], () => {
       </div>
 
       <div class="mx-1 h-5 w-px bg-surface-hair" aria-hidden="true" />
-
-      <button
-        type="button"
-        class="flex items-center gap-1.5 rounded-full border border-surface-hair px-3 py-1 text-sm text-parchment transition hover:border-key/50 hover:text-key"
-        @click="loadSample"
-      >
-        <FileCode2 class="h-4 w-4" aria-hidden="true" />
-        {{ t('toolbar.loadSample') }}
-      </button>
 
       <button
         type="button"
