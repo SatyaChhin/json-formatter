@@ -56,10 +56,22 @@ import type { Locale, FontFamily } from '~/types/i18n'
 // View mode type definition
 type ViewMode = 'tree' | 'text' | 'table' | 'code' | 'yaml' | 'csv' | 'schema' | 'card'
 
-// Hides the NPCA logo in the header if public/npca-logo.png is missing
+// Hides the NPCA logo in the header if public/npca_logo.png is missing
 // Bound dynamically so Vite doesn't try to resolve it as an import at build time
-const npcaLogoSrc = '../npca_logo.png'
+const npcaLogoSrc = '/npca_logo.png'
 const npcaLogoOk = ref(true)
+
+// Top-level tool: the JSON workspace or the SQL formatter
+type Tool = 'json' | 'sql'
+const TOOL_STORAGE_KEY = 'json-formatter:tool'
+const tool = ref<Tool>('json')
+
+function setTool(next: Tool) {
+  tool.value = next
+  try {
+    localStorage.setItem(TOOL_STORAGE_KEY, next)
+  } catch {}
+}
 
 const viewTabs: { id: ViewMode; label: string; icon: Component }[] = [
   { id: 'tree', label: 'Tree', icon: FolderTree },
@@ -559,6 +571,9 @@ onMounted(async () => {
   initFontSettings()
   initLocale()
   initHistory()
+  try {
+    if (localStorage.getItem(TOOL_STORAGE_KEY) === 'sql') tool.value = 'sql'
+  } catch {}
   document.addEventListener('fullscreenchange', handleFullscreenChange)
 
   // A share link in the URL hash takes priority over the last locally saved document
@@ -605,12 +620,20 @@ onUnmounted(() => {
         <div class="leading-tight">
           <p class="text-sm font-bold text-key">NPCA – National Payment Certification Agency</p>
           <div class="mt-0.5 flex items-center gap-1.5">
-            <h1 class="text-xs font-semibold text-key">{{ t('header.title') }}</h1>
+            <h1 class="text-xs font-semibold text-key">{{ tool === 'sql' ? t('header.titleSql') : t('header.title') }}</h1>
           </div>
         </div>
       </div>
       <div class="flex items-center gap-2">
-        <div class="flex items-center gap-2 text-xs">
+        <div class="flex items-center rounded-full border border-surface-hair p-0.5 text-xs font-semibold" role="group" :aria-label="t('tool.label')">
+          <button v-for="opt in (['json', 'sql'] as const)" :key="opt" type="button" class="rounded-full px-3 py-1 transition"
+            :class="tool === opt ? 'bg-key text-ink' : 'text-muted hover:text-parchment'"
+            :aria-pressed="tool === opt" @click="setTool(opt)">
+            {{ t(opt === 'json' ? 'tool.json' : 'tool.sql') }}
+          </button>
+        </div>
+        <div class="h-5 w-px bg-surface-hair" aria-hidden="true" />
+        <div v-if="tool === 'json'" class="flex items-center gap-2 text-xs">
           <template v-if="!isEmpty">
             <span v-if="liveValidation.valid" class="flex items-center gap-1.5 uppercase  text-string">
               <CheckCircle2 class="h-4 w-4" aria-hidden="true" />
@@ -705,14 +728,14 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-        <button type="button"
+        <button v-if="tool === 'json'" type="button"
           class="flex h-8 w-8 items-center justify-center rounded-full border transition"
           :class="isDiffMode ? 'border-key/50 bg-key/20 text-key' : 'border-surface-hair text-parchment hover:border-key/50 hover:text-key'"
           title="Compare two JSON documents" aria-label="Compare two JSON documents" :aria-pressed="isDiffMode"
           @click="isDiffMode = !isDiffMode">
           <GitCompare class="h-4 w-4" aria-hidden="true" />
         </button>
-        <div class="relative" ref="historyMenuRef">
+        <div v-if="tool === 'json'" class="relative" ref="historyMenuRef">
           <button type="button"
             class="flex h-8 w-8 items-center justify-center rounded-full border border-surface-hair text-parchment transition hover:border-key/50 hover:text-key"
             title="Document history" aria-label="Document history" :aria-expanded="historyMenuOpen"
@@ -764,13 +787,13 @@ onUnmounted(() => {
               <Maximize2 v-else class="h-3.5 w-3.5" aria-hidden="true" />
               {{ isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen' }}
             </button>
-            <button type="button"
+            <button v-if="tool === 'json'" type="button"
               class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition enabled:hover:bg-key/10 enabled:hover:text-key disabled:cursor-not-allowed disabled:opacity-40 rounded-full"
               :disabled="isEmpty || isSharing" @click="handleShare(); moreMenuOpen = false">
               <Share class="h-3.5 w-3.5" aria-hidden="true" />
               Copy shareable link
             </button>
-            <button type="button"
+            <button v-if="tool === 'json'" type="button"
               class="flex w-full items-center gap-2 px-3 py-2 text-left text-xs text-parchment transition enabled:hover:bg-key/10 enabled:hover:text-key disabled:cursor-not-allowed disabled:opacity-40 rounded-full"
               :disabled="isEmpty" @click="handleSaveToHistory(); moreMenuOpen = false">
               <Bookmark class="h-3.5 w-3.5" aria-hidden="true" />
@@ -804,6 +827,10 @@ onUnmounted(() => {
         </div>
       </div>
     </header>
+    <SqlFormatter v-if="tool === 'sql'" @copy="(text) => copyToClipboard(text)"
+      @download="(text, filename) => downloadJson(text, filename, 'application/sql')" />
+
+    <template v-else>
     <Toolbar :indent-size="options.indentSize" :sort-keys="options.sortKeys ?? false" :show-tree="showTree"
       :can-download="canDownload || (!isEmpty && liveValidation.valid)" :samples="sampleDatasets" @format="runFormat"
       @minify="runMinify" @clear="handleClear" @copy="handleCopy()" @download="handleDownload()"
@@ -1075,6 +1102,7 @@ onUnmounted(() => {
         </div>
       </section>
     </main>
+    </template>
 
     <!-- Toasts Notifications -->
     <div class="pointer-events-none fixed bottom-4 right-4 flex flex-col gap-2">
