@@ -35,6 +35,7 @@ import {
   Plus,
   Minus,
   CircleHelp,
+  IdCard,
 } from 'lucide-vue-next'
 import { useJsonFormatter } from '~/composables/useJsonFormatter'
 import { useClipboard } from '~/composables/useClipboard'
@@ -52,7 +53,7 @@ import type { IndentSize, SampleDataset } from '~/types/json'
 import type { Locale, FontFamily } from '~/types/i18n'
 
 // View mode type definition
-type ViewMode = 'tree' | 'text' | 'table' | 'code' | 'yaml' | 'csv' | 'schema'
+type ViewMode = 'tree' | 'text' | 'table' | 'code' | 'yaml' | 'csv' | 'schema' | 'card'
 
 const viewTabs: { id: ViewMode; label: string; icon: Component }[] = [
   { id: 'tree', label: 'Tree', icon: FolderTree },
@@ -62,6 +63,7 @@ const viewTabs: { id: ViewMode; label: string; icon: Component }[] = [
   { id: 'yaml', label: 'Yaml', icon: FileType2 },
   { id: 'csv', label: 'Csv', icon: FileSpreadsheet },
   { id: 'schema', label: 'Schema', icon: ShieldCheck },
+  { id: 'card', label: 'Card', icon: IdCard },
 ]
 
 const { state, options, validate, format, minify, setIndentSize, toggleSortKeys, clear, loadSample, canDownload } =
@@ -1069,6 +1071,14 @@ onUnmounted(() => {
           <!-- 7. JSON Schema Validation -->
           <template v-else-if="viewMode === 'schema'">
             <SchemaPanel :data="parsedForTree" :has-data="!isEmpty && liveValidation.valid" />
+          </template>
+
+          <!-- 8. Editable JSON Card, exportable as an image -->
+          <template v-else-if="viewMode === 'card'">
+            <ClientOnly>
+              <JsonCard :json="liveValidation.valid ? filteredFormattedText : content"
+                @toast="(text, variant) => pushToast(text, variant)" />
+            </ClientOnly>
           </template>
         </div>
       </section>
