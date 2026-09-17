@@ -56,6 +56,11 @@ import type { Locale, FontFamily } from '~/types/i18n'
 // View mode type definition
 type ViewMode = 'tree' | 'text' | 'table' | 'code' | 'yaml' | 'csv' | 'schema' | 'card'
 
+// Hides the NPCA logo in the header if public/npca-logo.png is missing
+// Bound dynamically so Vite doesn't try to resolve it as an import at build time
+const npcaLogoSrc = '../npca_logo.png'
+const npcaLogoOk = ref(true)
+
 const viewTabs: { id: ViewMode; label: string; icon: Component }[] = [
   { id: 'tree', label: 'Tree', icon: FolderTree },
   { id: 'text', label: 'Text', icon: FileText },
@@ -586,23 +591,32 @@ onUnmounted(() => {
 <template>
   <div class="flex h-screen flex-col bg-ink text-parchment">
     <header class="flex items-center justify-between border-b border-surface-hair bg-surface px-5 py-3">
-      <div class="flex items-center gap-2">
-        <span class="flex h-9 w-9 items-center justify-center rounded bg-key/15 border border-key/30">
+      <div class="flex items-center gap-3">
+        <img
+          v-if="npcaLogoOk"
+          :src="npcaLogoSrc"
+          alt="NPCA logo"
+          class="h-10 w-auto object-contain"
+          @error="npcaLogoOk = false"
+        />
+        <span v-else class="flex h-9 w-9 items-center justify-center rounded bg-key/15 border border-key/30">
           <Logo :size="22" />
         </span>
         <div class="leading-tight">
-          <h1 class="text-sm font-bold uppercase tracking-wide text-parchment">{{ t('header.title') }}</h1>
-          <p class="text-xs text-muted">{{ t('header.subtitle') }}</p>
+          <p class="text-sm font-bold text-key">NPCA – National Payment Certification Agency</p>
+          <div class="mt-0.5 flex items-center gap-1.5">
+            <h1 class="text-xs font-semibold text-key">{{ t('header.title') }}</h1>
+          </div>
         </div>
       </div>
       <div class="flex items-center gap-2">
         <div class="flex items-center gap-2 text-xs">
           <template v-if="!isEmpty">
-            <span v-if="liveValidation.valid" class="flex items-center gap-1.5 uppercase tracking-wide text-string">
+            <span v-if="liveValidation.valid" class="flex items-center gap-1.5 uppercase  text-string">
               <CheckCircle2 class="h-4 w-4" aria-hidden="true" />
               {{ t('status.valid') }}
             </span>
-            <span v-else class="flex items-center gap-1.5 uppercase tracking-wide text-boolean">
+            <span v-else class="flex items-center gap-1.5 uppercase  text-boolean">
               <XCircle class="h-4 w-4" aria-hidden="true" />
               {{ t('status.invalid') }}
             </span>
@@ -625,7 +639,7 @@ onUnmounted(() => {
           <div v-if="themeMenuOpen"
             class="absolute right-0 top-full z-20 mt-1 w-52 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel">
             <div class="flex items-center justify-between border-b border-surface-hair px-3 py-2">
-              <span class="text-[10.5px] uppercase tracking-wide text-muted">Mode</span>
+              <span class="text-[10.5px] uppercase  text-muted">Mode</span>
               <div class="flex items-center rounded-full border border-surface-hair p-0.5 text-xs">
                 <button type="button" class="flex items-center gap-1 rounded-full px-2 py-1 transition"
                   :class="theme === 'dark' ? 'bg-key/20 text-key' : 'text-muted hover:text-parchment'"
@@ -640,7 +654,7 @@ onUnmounted(() => {
               </div>
             </div>
             <div class="p-1">
-              <p class="px-2 py-1 text-[10.5px] uppercase tracking-wide text-muted">Theme</p>
+              <p class="px-2 py-1 text-[10.5px] uppercase  text-muted">Theme</p>
               <button v-for="opt in themePresetOptions" :key="opt.id" type="button"
                 class="flex w-full items-center gap-2 rounded-full px-2 py-1.5 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
                 :aria-pressed="preset === opt.id" @click="setPreset(opt.id)">
@@ -650,7 +664,7 @@ onUnmounted(() => {
               </button>
             </div>
             <div class="border-t border-surface-hair p-1">
-              <p class="px-2 py-1 text-[10.5px] uppercase tracking-wide text-muted">Code Color</p>
+              <p class="px-2 py-1 text-[10.5px] uppercase  text-muted">Code Color</p>
               <button v-for="opt in codeColorSchemeOptions" :key="opt.id" type="button"
                 class="flex w-full items-center gap-2 rounded-full px-2 py-1.5 text-left text-xs text-parchment transition hover:bg-key/10 hover:text-key"
                 :aria-pressed="codeColorScheme === opt.id" @click="setCodeColorScheme(opt.id)">
@@ -662,7 +676,7 @@ onUnmounted(() => {
               </button>
             </div>
             <div class="border-t border-surface-hair p-1">
-              <p class="px-2 py-1 text-[10.5px] uppercase tracking-wide text-muted">Font</p>
+              <p class="px-2 py-1 text-[10.5px] uppercase  text-muted">Font</p>
               <div class="px-2 pb-1.5">
                 <select
                   class="w-full rounded border border-surface-hair bg-surface px-2 py-1 text-xs text-parchment focus:border-key/50 focus:outline-none"
@@ -708,7 +722,7 @@ onUnmounted(() => {
           <div v-if="historyMenuOpen"
             class="absolute right-0 top-full z-20 mt-1 w-80 overflow-hidden rounded border border-surface-hair bg-surface-raised shadow-panel">
             <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
-              <span class="text-[11px] uppercase tracking-wide text-muted">History</span>
+              <span class="text-[11px] uppercase  text-muted">History</span>
               <button v-if="historyEntries.length" type="button"
                 class="flex items-center gap-1 text-[11px] text-muted transition hover:text-boolean rounded-full"
                 @click="clearHistory">
@@ -773,14 +787,14 @@ onUnmounted(() => {
           <div v-if="helpMenuOpen"
             class="absolute right-0 top-full z-20 mt-1 max-h-[75vh] w-80 overflow-y-auto rounded border border-surface-hair bg-surface-raised shadow-panel">
             <div class="sticky top-0 flex items-center justify-between border-b border-surface-hair bg-surface-raised px-3 py-2">
-              <span class="text-[11px] uppercase tracking-wide text-muted">{{ t('help.title') }}</span>
+              <span class="text-[11px] uppercase  text-muted">{{ t('help.title') }}</span>
               <button type="button" class="rounded-full p-0.5 text-muted transition hover:text-key" aria-label="Close"
                 @click="helpMenuOpen = false">
                 <X class="h-3.5 w-3.5" aria-hidden="true" />
               </button>
             </div>
             <div v-for="group in featureGroups" :key="group.titleKey" class="border-b border-surface-hair p-2 last:border-b-0">
-              <p class="px-1 py-1 text-[10.5px] uppercase tracking-wide text-muted">{{ t(group.titleKey) }}</p>
+              <p class="px-1 py-1 text-[10.5px] uppercase  text-muted">{{ t(group.titleKey) }}</p>
               <div v-for="item in group.items" :key="item.labelKey" class="rounded px-1 py-1.5">
                 <p class="text-xs font-medium text-parchment">{{ t(item.labelKey) }}</p>
                 <p class="mt-0.5 text-[11px] leading-snug text-muted">{{ t(item.descKey) }}</p>
@@ -802,7 +816,7 @@ onUnmounted(() => {
 
     <main v-if="isDiffMode" class="flex min-h-0 flex-1 flex-col gap-2 p-4">
       <div class="flex items-center justify-between rounded-lg border border-surface-hair bg-surface px-3 py-2">
-        <div class="flex items-center gap-4 text-[11px] uppercase tracking-wide text-muted">
+        <div class="flex items-center gap-4 text-[11px] uppercase  text-muted">
           <span>Left: current document</span>
           <span>Right: paste or upload a document to compare</span>
         </div>
@@ -841,7 +855,7 @@ onUnmounted(() => {
         @dragenter.prevent="handleDragEnter" @dragover.prevent @dragleave.prevent="handleDragLeave"
         @drop.prevent="handleDrop">
         <div class="flex items-center justify-between border-b border-surface-hair px-3 py-1.5">
-          <span class="text-[11px] uppercase tracking-wide text-muted">{{ t('editor.label') }}</span>
+          <span class="text-[11px] uppercase  text-muted">{{ t('editor.label') }}</span>
           <div>
             <input ref="fileInputRef" type="file" accept=".json,.txt" class="hidden" @change="handleFileChange" />
             <button type="button"
@@ -881,7 +895,7 @@ onUnmounted(() => {
           <!-- Folder-tab view switcher -->
           <div class="flex items-end gap-0.5 overflow-x-auto bg-surface-raised px-2 pt-2">
             <button v-for="tab in viewTabs" :key="tab.id" type="button"
-              class="flex shrink-0 items-center gap-1.5 px-3 pb-2 pt-1.5 text-[10.5px] uppercase tracking-wide transition [clip-path:polygon(10%_0,90%_0,100%_100%,0%_100%)]"
+              class="flex shrink-0 items-center gap-1.5 px-3 pb-2 pt-1.5 text-[10.5px] uppercase  transition [clip-path:polygon(10%_0,90%_0,100%_100%,0%_100%)]"
               :class="viewMode === tab.id ? 'bg-surface font-bold text-key' : 'bg-surface-raised text-muted hover:text-parchment'"
               :aria-pressed="viewMode === tab.id" @click="viewMode = tab.id">
               <component :is="tab.icon" class="h-3 w-3" aria-hidden="true" />
