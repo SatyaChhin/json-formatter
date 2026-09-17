@@ -108,6 +108,13 @@ function handleNodeDownload(e?: Event) {
   emit('download', formatted)
 }
 
+/** Toggles a container — but not when the click just finished a text selection */
+function handleRowClick() {
+  if (!isContainer.value) return
+  if (window.getSelection()?.toString()) return
+  expanded.value = !expanded.value
+}
+
 function handleCopyPath(e?: Event) {
   if (e) e.stopPropagation()
   emit('copy-path', props.path)
@@ -115,7 +122,8 @@ function handleCopyPath(e?: Event) {
 </script>
 
 <template>
-  <div>
+  <!-- select-text overrides the panel's select-none so keys/values can be highlighted and copied -->
+  <div class="select-text">
     <!-- Root Level Opening Bracket (Depth 0) -->
     <div v-if="depth === 0" class="px-1 font-mono text-[length:var(--font-size-content)] text-muted">
       {{ valueType === 'array' ? '[' : '{' }}
@@ -124,9 +132,8 @@ function handleCopyPath(e?: Event) {
     <!-- Depth > 0 Nodes -->
     <div
       v-if="depth > 0"
-      class="group flex cursor-pointer items-start gap-1 rounded px-1 py-0.5 font-mono text-[length:var(--font-size-content)] hover:bg-surface-hair/40"
-      :class="{ 'cursor-default': !isContainer }"
-      @click="isContainer && (expanded = !expanded)"
+      class="group flex cursor-auto items-start gap-1 rounded px-1 py-0.5 font-mono text-[length:var(--font-size-content)] hover:bg-surface-hair/40"
+      @click="handleRowClick"
     >
       <ChevronRight
         v-if="isContainer && entries.length > 0"
